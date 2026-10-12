@@ -153,6 +153,7 @@ On the live desk (`/desk`, owner password), the same screens use real data, and 
 | Feature | Implemented | Tested locally | Tested live | Remaining dependency |
 |---|---|---|---|---|
 | Preview journey | Yes | Yes (e2e) | Yes (deployed preview) | — |
+| **Full live journey** | Yes | Yes | **Yes** — Collect (RSS + news search) → Gemini draft → Telegram review → owner confirmation → Resend delivery → 9 stories saved to editorial memory | — |
 | RSS ingestion + dedupe + clustering | Yes | Yes | **Yes** — production run: 337 items, 11/12 feeds (MediaNama blocks cloud IPs → now relayed via ScrapingBee) | — |
 | Durable storage | Yes | Yes (PGlite) | **Yes** — Supabase (Mumbai) via Vercel, migrations applied, REST access locked down | — |
 | Owner auth | Yes | Yes | Configured on Vercel; owner sign-in to be done by the owner | — |
@@ -160,7 +161,7 @@ On the live desk (`/desk`, owner password), the same screens use real data, and 
 | News search queries | Yes | Yes | **Yes** — Google News search (no key): 4 live queries returned 79 results, matched to RSS coverage as same-event | Optional `GNEWS_API_KEY` for the GNews API |
 | ScrapingBee | Yes | Yes | **Yes** — production run: 19 pages extracted, 7 paywalled skipped, 25-credit budget respected | — |
 | Telegram review + reminders | Yes | Yes | **Yes** — owner chat linked; production draft delivered to Telegram | — |
-| Resend send + webhooks | Yes | Yes | **Yes** — real send accepted; idempotent retry returned the same ID; webhook registered | Verify `pg27.mesaschool.co` DNS (docs/RESEND_DNS.md) to reach real subscribers |
+| Resend send + webhooks | Yes | Yes | **Yes** — first edition approved by the owner and sent end to end on production (2026-10-12): campaign SENT, delivery ACCEPTED, signed `email.delivered` webhook received; idempotent retry verified | A verified sending domain to reach recipients other than the account owner |
 | Gmail OAuth + send | Yes | Yes (mocked API) | **No** | Google OAuth client, consent-screen setup |
 | Bounce processing | Yes | Yes (mocked API) | **No** | `gmail.readonly` grant (restricted scope) |
 | Calendar | Yes | Yes (mocked API) | **No** | Google OAuth with Calendar scopes |
