@@ -191,4 +191,4 @@ On the live desk (`/desk`, owner password), the same screens use real data, and 
 
 - **Vercel:** `vercel deploy --prod` from this folder. Add the env vars from `.env.example`, then redeploy. Details: [docs/SETUP.md](docs/SETUP.md).
 - **Deployment URL:** https://the-dispatch-liard.vercel.app (Vercel production, deployed 2026-10-12). Preview verified working there. The live desk shows its setup screen until `DATABASE_URL`, `AUTH_SECRET` and `OWNER_PASSWORD` are added. The scheduler returns 503 until `CRON_SECRET` is set.
-- **GitHub repository:** not created yet; no GitHub credentials were available in the build environment.
+- **GitHub repository:** https://github.com/aditshah-sketch/dispatch-
