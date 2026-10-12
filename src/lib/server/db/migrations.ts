@@ -401,4 +401,28 @@ do $$ begin if exists (select 1 from pg_roles where rolname = 'anon') then revok
 do $$ begin if exists (select 1 from pg_roles where rolname = 'anon') then alter default privileges in schema public revoke all on tables from anon, authenticated; alter default privileges in schema public revoke all on sequences from anon, authenticated; end if; end $$
 `,
   },
+  {
+    id: 5,
+    name: "repair JSON values double-encoded by the postgres.js driver",
+    sql: `
+update articles set evidence_notes = (evidence_notes #>> '{}')::jsonb where jsonb_typeof(evidence_notes) = 'string';
+update audit_events set details = (details #>> '{}')::jsonb where jsonb_typeof(details) = 'string';
+update calendar_actions set details = (details #>> '{}')::jsonb where jsonb_typeof(details) = 'string';
+update campaigns set snapshot = (snapshot #>> '{}')::jsonb where jsonb_typeof(snapshot) = 'string';
+update edition_revisions set snapshot = (snapshot #>> '{}')::jsonb where jsonb_typeof(snapshot) = 'string';
+update edition_stories set scores = (scores #>> '{}')::jsonb where jsonb_typeof(scores) = 'string';
+update edition_stories set warnings = (warnings #>> '{}')::jsonb where jsonb_typeof(warnings) = 'string';
+update edition_stories set corroborating = (corroborating #>> '{}')::jsonb where jsonb_typeof(corroborating) = 'string';
+update editions set draft_notes = (draft_notes #>> '{}')::jsonb where jsonb_typeof(draft_notes) = 'string';
+update ingestion_runs set stats = (stats #>> '{}')::jsonb where jsonb_typeof(stats) = 'string';
+update ingestion_runs set source_results = (source_results #>> '{}')::jsonb where jsonb_typeof(source_results) = 'string';
+update integration_credentials set scopes = (scopes #>> '{}')::jsonb where jsonb_typeof(scopes) = 'string';
+update jobs set payload = (payload #>> '{}')::jsonb where jsonb_typeof(payload) = 'string';
+update jobs set result = (result #>> '{}')::jsonb where jsonb_typeof(result) = 'string';
+update telegram_actions set payload = (payload #>> '{}')::jsonb where jsonb_typeof(payload) = 'string';
+update workspace_settings set schedule = (schedule #>> '{}')::jsonb where jsonb_typeof(schedule) = 'string';
+update workspace_settings set sending = (sending #>> '{}')::jsonb where jsonb_typeof(sending) = 'string';
+update workspace_settings set newsletter = (newsletter #>> '{}')::jsonb where jsonb_typeof(newsletter) = 'string';
+`,
+  },
 ];

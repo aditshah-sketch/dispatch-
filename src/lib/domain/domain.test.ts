@@ -277,3 +277,12 @@ describe("entity extraction", () => {
     expect(m.same).toBe(false);
   });
 });
+
+describe("postgres driver adapter", () => {
+  it("casts jsonb parameters through text so JSON isn't double-encoded", async () => {
+    const { pgText } = await import("../server/db/client");
+    expect(pgText("insert into t (a, b) values ($1, $2::jsonb) on conflict do update set c = $10::jsonb")).toBe(
+      "insert into t (a, b) values ($1, $2::text::jsonb) on conflict do update set c = $10::text::jsonb",
+    );
+  });
+});

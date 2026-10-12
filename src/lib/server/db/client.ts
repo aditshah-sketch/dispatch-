@@ -103,13 +103,21 @@ async function openPostgres(url: string): Promise<Db> {
   type Handle = { unsafe: (t: string, p?: never[]) => Promise<unknown>; begin?: (fn: (tx: Handle) => Promise<unknown>) => Promise<unknown> };
   const wrap = (s: Handle, root: boolean): Db => ({
     kind: "postgres",
-    query: async <T,>(t: string, params?: unknown[]) => (await s.unsafe(t, (params ?? []) as never[])) as unknown as T[],
+    query: async <T,>(t: string, params?: unknown[]) => (await s.unsafe(pgText(t), (params ?? []) as never[])) as unknown as T[],
     tx: async <T,>(fn: (db: Db) => Promise<T>): Promise<T> => {
       if (root && s.begin) return (await s.begin((tx) => fn(wrap(tx, false)))) as T;
       return fn(wrap(s, false)); // already inside a transaction
     },
   });
   return wrap(sql as unknown as Handle, true);
+}
+
+// Callers pass JSON already stringified and cast with `$n::jsonb`. postgres.js
+// asks the server for parameter types and JSON-encodes jsonb parameters
+// itself, which would double-encode them (stored as a JSON *string*). Casting
+// through text keeps the parameter a plain string. PGlite doesn't need this.
+export function pgText(text: string): string {
+  return text.replace(/(\$\d+)::jsonb/g, "$1::text::jsonb");
 }
 
 export async function migrate(db: Db): Promise<void> {
