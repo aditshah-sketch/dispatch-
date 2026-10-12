@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:dns/promises", () => ({ lookup: async () => [{ address: "93.184.216.34", family: 4 }] }));
 
@@ -447,5 +447,82 @@ describe("concurrency (test 12)", () => {
     expect(a.created).toBe(true);
     expect(b.created).toBe(false);
     expect((await getJob(db, a.job.id))!.id).toBe(b.job.id);
+  });
+});
+
+describe("Resend provider", () => {
+  const WH = "whsec_" + Buffer.from("resend-webhook-test-secret-32byt").toString("base64");
+  beforeEach(() => {
+    Object.assign(process.env, { RESEND_API_KEY: "re_test", RESEND_FROM: "news@dispatch.test", RESEND_WEBHOOK_SECRET: WH });
+  });
+  afterEach(() => {
+    delete process.env.RESEND_API_KEY;
+    delete process.env.RESEND_FROM;
+    delete process.env.RESEND_WEBHOOK_SECRET;
+  });
+
+  async function signed(body: unknown, secret = WH) {
+    const { createHmac } = await import("node:crypto");
+    const raw = JSON.stringify(body);
+    const id = `msg_${Math.random().toString(36).slice(2)}`;
+    const ts = String(Math.floor(Date.now() / 1000));
+    const sig = createHmac("sha256", Buffer.from(secret.replace(/^whsec_/, ""), "base64")).update(`${id}.${ts}.${raw}`).digest("base64");
+    return { raw, headers: new Headers({ "svix-id": id, "svix-timestamp": ts, "svix-signature": `v1,${sig}` }), id };
+  }
+
+  it("sends without Gmail, one recipient per request, idempotent per delivery", async () => {
+    for (const e of ["a@example.com", "b@example.com"]) await addSubscriber(db, e, null);
+    await seedDraft(db);
+    const r = await confirm(db);
+    expect(r.ok).toBe(true);
+    const ed = r.ok ? r.data.edition : null!;
+    const keys: string[] = [];
+    let n = 0;
+    mockFetch([[/api\.resend\.com\/emails/, (_u, init) => {
+      n++;
+      const h = new Headers(init.headers);
+      keys.push(h.get("idempotency-key")!);
+      const body = JSON.parse(String(init.body));
+      expect(body.to).toHaveLength(1);
+      expect(body.headers["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
+      expect(body.from).toBe("Shreya at The Dispatch <news@dispatch.test>");
+      // First attempt for the first recipient times out: retried once with the same key.
+      if (n === 1) throw new TypeError("socket hang up");
+      return json({ id: `re_${n}` });
+    }]]);
+    const out = await runSendJob(db, { payload: { editionId: ed.id, revision: ed.revision, approvalId: ed.approval!.id } }, { budgetMs: 10_000 });
+    expect(out.kind).toBe("done");
+    expect(keys[0]).toBe(keys[1]); // the retry reused the idempotency key
+    expect(new Set(keys).size).toBe(2);
+    const [c] = await db.query<{ provider: string; status: string }>(`select provider, status from campaigns`);
+    expect(c).toMatchObject({ provider: "resend", status: "SENT" });
+  });
+
+  it("verifies webhook signatures and handles bounces and complaints", async () => {
+    const { verifyResendWebhook } = await import("@/lib/server/providers/resend");
+    const { processResendEvent } = await import("@/lib/server/services/resend-events");
+    for (const e of ["hard@example.com", "spam@example.com", "soft@example.com"]) await addSubscriber(db, e, null);
+    await seedDraft(db);
+    const r = await confirm(db);
+    const ed = r.ok ? r.data.edition : null!;
+    let n = 0;
+    mockFetch([[/api\.resend\.com\/emails/, () => json({ id: `re_${++n}` })]]);
+    await runSendJob(db, { payload: { editionId: ed.id, revision: ed.revision, approvalId: ed.approval!.id } }, { budgetMs: 10_000 });
+    const ids = Object.fromEntries((await db.query<{ email: string; provider_message_id: string }>(`select email, provider_message_id from deliveries`)).map((x) => [x.email, x.provider_message_id]));
+
+    const bounce = await signed({ type: "email.bounced", data: { email_id: ids["hard@example.com"], to: ["hard@example.com"], bounce: { type: "Permanent", subType: "General", message: "550 5.1.1" } } });
+    expect(verifyResendWebhook(WH, bounce.headers, bounce.raw)).toBe(true);
+    expect(verifyResendWebhook(WH, bounce.headers, bounce.raw.replace("Permanent", "Temporary"))).toBe(false);
+    expect(verifyResendWebhook("whsec_" + Buffer.from("wrong").toString("base64"), bounce.headers, bounce.raw)).toBe(false);
+    expect(await processResendEvent(db, bounce.id, JSON.parse(bounce.raw))).toBe("permanent");
+    expect(await processResendEvent(db, bounce.id, JSON.parse(bounce.raw))).toBe("duplicate");
+    expect(await processResendEvent(db, "e2", { type: "email.complained", data: { email_id: ids["spam@example.com"] } })).toBe("complaint");
+    expect(await processResendEvent(db, "e3", { type: "email.bounced", data: { email_id: ids["soft@example.com"], bounce: { type: "Temporary" } } })).toBe("temporary");
+    expect(await processResendEvent(db, "e4", { type: "email.bounced", data: { email_id: "not-ours", bounce: { type: "Permanent" } } })).toBe("unmatched");
+
+    const subs = Object.fromEntries((await db.query<{ email: string; status: string }>(`select email, status from subscribers`)).map((x) => [x.email, x.status]));
+    expect(subs["hard@example.com"]).toBe("BOUNCED");
+    expect(subs["spam@example.com"]).toBe("UNSUBSCRIBED");
+    expect(subs["soft@example.com"]).toBe("ACTIVE");
   });
 });

@@ -70,7 +70,7 @@ const schemas: Partial<Record<ActionName, z.ZodType>> = {
   }),
   saveSending: z.object({
     fromName: z.string().min(1).max(100), replyTo: z.union([z.literal(""), z.string().email()]), dailyLimit: z.number().int().min(1).max(100_000),
-    accountType: z.enum(["gmail", "workspace", "custom"]), newsletterName: z.string().min(1).max(100), footer: z.string().max(600),
+    accountType: z.enum(["gmail", "workspace", "resend", "custom"]), newsletterName: z.string().min(1).max(100), footer: z.string().max(600),
   }),
   toggleSource: z.object({ id: z.string().max(64), enabled: z.boolean() }),
   addSource: z.object({ kind: z.enum(["rss", "news_query"]), name: z.string().min(1).max(80), locator: z.string().min(2).max(500) }),
@@ -399,6 +399,14 @@ async function testIntegration(db: Db, key: string): Promise<ActionResult<unknow
         const { token } = await googleAccessToken(db, "send");
         // gmail.send alone can't read the profile; this verifies the token refreshes.
         return done({ detail: `Access token valid for sending (${token ? "refresh OK" : "?"}). No email was sent.` });
+      }
+      case "resend": {
+        const r = config.resend();
+        if (!r.ok) return fail("UNAVAILABLE", `Missing ${r.missing.join(", ")}.`);
+        const { resendCheck } = await import("../providers/resend");
+        const detail = await resendCheck(r.value!.apiKey, r.value!.from);
+        await markHealth(db, "resend", true);
+        return done({ detail: `${detail}${r.value!.webhookSecret ? "" : " Bounce/complaint webhooks aren't set up yet (RESEND_WEBHOOK_SECRET)."}` });
       }
       case "gmail_feedback": {
         const { token } = await googleAccessToken(db, "feedback");

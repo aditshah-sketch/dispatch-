@@ -6,15 +6,16 @@ import type { CampaignView } from "../../views";
 import { config, WORKSPACE_ID } from "../config";
 import { signPayload } from "../crypto";
 import { iso, json, type Db } from "../db/client";
-import { buildMime, GoogleApiError, gmailList, gmailSend } from "../providers/google";
+import { gmailList } from "../providers/google";
 import { getEditionById, getSnapshot, recordPublishedRefs, setEditionStatus } from "../repo/editions";
 import { audit, markHealth, notify, rearm, type Job } from "../repo/ops";
 import { getSettings } from "../repo/settings";
 import { getGoogleConnection, googleAccessToken, hasFeature } from "./google-auth";
+import { getMailer, mailerReadiness, type Mailer } from "./mailer";
 
-// Gmail API per-user quota is 6,000 units/minute and messages.send costs 100
-// units, i.e. at most ~60 sends per minute. We pace below that.
-const SEND_INTERVAL_MS = Number(process.env.DISPATCH_SEND_INTERVAL_MS ?? 1100);
+// Pacing comes from the provider (Gmail ~60/min, Resend 10 req/s); tests set
+// DISPATCH_SEND_INTERVAL_MS=0.
+const INTERVAL_OVERRIDE = process.env.DISPATCH_SEND_INTERVAL_MS;
 const BATCH = 10;
 const MAX_TEMP_ATTEMPTS = 3;
 
@@ -60,10 +61,10 @@ export async function runSendJob(db: Db, job: Pick<Job, "payload">, opts: { budg
       await audit(db, { actor: "scheduler", action: "send.blocked", entityType: "edition", entityId: editionId, message: "Send blocked: approved snapshot does not match the current content." });
       return { kind: "blocked", detail: "Approved snapshot doesn't match the content — reconfirmation needed." };
     }
-    const google = await getGoogleConnection(db);
-    if (!hasFeature(google, "send")) {
-      await notify(db, { editionId, kind: "CONFIRMATION", channel: "IN_APP", status: "FAILED", revision, detail: "Scheduled send could not start: Gmail is not connected or needs reconnecting. Nothing was sent. Reconnect, then use “Run due sends”." });
-      return { kind: "blocked", detail: "Gmail not connected — nothing was sent." };
+    const ready = await mailerReadiness(db);
+    if (!ready.ok) {
+      await notify(db, { editionId, kind: "CONFIRMATION", channel: "IN_APP", status: "FAILED", revision, detail: `Scheduled send could not start: ${ready.issue} Nothing was sent. Fix it, then use “Run due sends”.` });
+      return { kind: "blocked", detail: `${ready.issue} Nothing was sent.` };
     }
 
     // Start the campaign atomically. Unique (edition, revision) and the
@@ -73,8 +74,8 @@ export async function runSendJob(db: Db, job: Pick<Job, "payload">, opts: { budg
       if (!moved.length) return null;
       const id = newId("cmp");
       await tx.query(
-        `insert into campaigns (id, workspace_id, edition_id, revision, content_hash, approval_id, status, snapshot) values ($1,$2,$3,$4,$5,$6,'SENDING',$7::jsonb)`,
-        [id, WORKSPACE_ID, editionId, revision, a.contentHash, a.id, json(snap.snapshot)],
+        `insert into campaigns (id, workspace_id, edition_id, revision, content_hash, approval_id, status, snapshot, provider) values ($1,$2,$3,$4,$5,$6,'SENDING',$7::jsonb,$8)`,
+        [id, WORKSPACE_ID, editionId, revision, a.contentHash, a.id, json(snap.snapshot), ready.provider],
       );
       await tx.query(
         `insert into deliveries (id, campaign_id, subscriber_id, email, status)
@@ -98,9 +99,9 @@ export async function runSendJob(db: Db, job: Pick<Job, "payload">, opts: { budg
   await db.query(`update campaigns set paused_until = null, paused_reason = null where id = $1`, [campaignId]);
 
   // A delivery left in SENDING by a crashed invocation may or may not have
-  // been accepted by Gmail. Never resend it automatically.
+  // been accepted by the provider. Never resend it automatically.
   await db.query(
-    `update deliveries set status = 'UNKNOWN', last_error = 'Interrupted during sending; Gmail may or may not have accepted it', updated_at = now()
+    `update deliveries set status = 'UNKNOWN', last_error = 'Interrupted during sending; the provider may or may not have accepted it', updated_at = now()
      where campaign_id = $1 and status = 'SENDING' and lease_until < now()`,
     [campaignId],
   );
@@ -110,12 +111,14 @@ export async function runSendJob(db: Db, job: Pick<Job, "payload">, opts: { budg
   const brand = { newsletterName: settings.newsletter.name, fromName: settings.sending.fromName, footer: settings.newsletter.footer };
   const deadline = Date.now() + opts.budgetMs;
 
-  let token: { token: string; email: string | null };
+  // A campaign keeps the provider it started with, even if settings change.
+  let mailer: Mailer;
   try {
-    token = await googleAccessToken(db, "send");
+    mailer = await getMailer(db, (campaign.provider as "gmail" | "resend" | null) ?? undefined);
   } catch (e) {
     return pause(db, campaignId, editionId, revision, 30, (e as Error).message);
   }
+  const interval = INTERVAL_OVERRIDE != null ? Number(INTERVAL_OVERRIDE) : mailer.intervalMs;
 
   while (Date.now() < deadline) {
     const batch = await db.query<Record<string, unknown>>(
@@ -141,29 +144,27 @@ export async function runSendJob(db: Db, job: Pick<Job, "payload">, opts: { budg
         continue;
       }
       const email = renderEmail(snapshot, brand, { unsubscribeUrl: unsubscribeUrl(String(d.subscriber_id)) });
-      const mime = buildMime({
-        fromName: brand.fromName,
-        fromEmail: token.email ?? "me",
-        to: sub.email,
-        replyTo: settings.sending.replyTo || null,
-        subject: email.subject,
-        html: email.html,
-        text: email.text,
-        unsubscribeUrl: unsubscribeUrl(String(d.subscriber_id)),
-        deliveryRef: id,
-      });
       try {
-        const sent = await gmailSend(token.token, mime);
-        await setDelivery(db, id, "ACCEPTED", { messageId: sent.id, threadId: sent.threadId });
+        const sent = await mailer.send({
+          fromName: brand.fromName,
+          to: sub.email,
+          replyTo: settings.sending.replyTo || null,
+          subject: email.subject,
+          html: email.html,
+          text: email.text,
+          unsubscribeUrl: unsubscribeUrl(String(d.subscriber_id)),
+          deliveryRef: id,
+        });
+        await setDelivery(db, id, "ACCEPTED", { messageId: sent.id, threadId: sent.threadId ?? undefined });
         await markPublished(db, editionId, snapshot);
       } catch (e) {
-        const err = e instanceof GoogleApiError ? e : new GoogleApiError((e as Error).message, "UNKNOWN");
+        const err = { message: (e as Error).message, kind: ((e as { kind?: string }).kind ?? "UNKNOWN") as string };
         if (err.kind === "UNKNOWN") {
           await setDelivery(db, id, "UNKNOWN", { error: err.message });
         } else if (err.kind === "QUOTA" || err.kind === "AUTH" || err.kind === "REVOKED" || err.kind === "SCOPE") {
           await db.query(`update deliveries set status = 'PENDING', attempts = attempts - 1, lease_until = null where id = $1`, [id]);
           await db.query(`update deliveries set status = 'PENDING', attempts = attempts - 1, lease_until = null where campaign_id = $1 and status = 'SENDING' and id <> $2`, [campaignId, id]);
-          if (err.kind !== "QUOTA") await markHealth(db, "gmail", false, err.message);
+          if (err.kind !== "QUOTA") await markHealth(db, mailer.provider, false, err.message);
           return pause(db, campaignId, editionId, revision, err.kind === "QUOTA" ? 60 : 30, err.message);
         } else if (err.kind === "TEMPORARY") {
           const attempts = Number(d.attempts);
@@ -172,10 +173,10 @@ export async function runSendJob(db: Db, job: Pick<Job, "payload">, opts: { budg
           await setDelivery(db, id, "FAILED_PERMANENT", { error: err.message });
         }
       }
-      await new Promise((r) => setTimeout(r, SEND_INTERVAL_MS));
+      if (interval > 0) await new Promise((r) => setTimeout(r, interval));
     }
   }
-  await markHealth(db, "gmail", true);
+  await markHealth(db, mailer.provider, true);
   return finishIfComplete(db, campaignId, editionId, revision);
 }
 
@@ -222,7 +223,7 @@ async function finishIfComplete(db: Db, campaignId: string, editionId: string, r
   const status = accepted === 0 && Number(c.problems) > 0 ? "FAILED" : Number(c.problems) > 0 ? "PARTIALLY_SENT" : "SENT";
   await db.query(`update campaigns set status = $2, finished_at = now() where id = $1 and status = 'SENDING'`, [campaignId, status]);
   await setEditionStatus(db, editionId, status, { publishedAt: accepted > 0 });
-  const detail = `Delivery finished for revision ${revision}: ${accepted} accepted by Gmail, ${c.problems} not delivered or uncertain, of ${c.total} recipients.`;
+  const detail = `Delivery finished for revision ${revision}: ${accepted} accepted by the email provider, ${c.problems} not delivered or uncertain, of ${c.total} recipients.`;
   await notify(db, { editionId, kind: "CONFIRMATION", channel: "IN_APP", status: status === "FAILED" ? "FAILED" : "SENT", revision, detail });
   await audit(db, { actor: "scheduler", action: `send.${status.toLowerCase()}`, entityType: "edition", entityId: editionId, message: detail });
   return { kind: "done", detail };
@@ -244,8 +245,10 @@ export async function campaignView(db: Db, editionId: string): Promise<CampaignV
   };
 }
 
-// Explicit, confirmed resend of UNKNOWN deliveries. If mailbox read access is
-// available, first look in Sent mail to reconcile ones that actually went out.
+// Explicit, confirmed resend of UNKNOWN deliveries. For Gmail, if mailbox read access
+// is available, first look in Sent mail for ones that actually went out. For
+// Resend, the delivery ID is the Idempotency-Key (kept 24h), so a resend within
+// that window cannot duplicate an email Resend already accepted.
 export async function retryUnknown(db: Db, editionId: string): Promise<string> {
   const [c] = await db.query<Record<string, unknown>>(`select * from campaigns where edition_id = $1 order by started_at desc limit 1`, [editionId]);
   if (!c) return "No campaign found.";
@@ -253,7 +256,7 @@ export async function retryUnknown(db: Db, editionId: string): Promise<string> {
   if (!unknown.length) return "No uncertain deliveries.";
   let reconciled = 0;
   const google = await getGoogleConnection(db);
-  if (hasFeature(google, "feedback")) {
+  if (c.provider !== "resend" && hasFeature(google, "feedback")) {
     const { token } = await googleAccessToken(db, "feedback");
     const subject = (c.snapshot as EditionSnapshot).subject.replace(/"/g, "");
     const after = Math.floor(Date.parse(iso(c.started_at)!) / 1000) - 60;

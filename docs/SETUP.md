@@ -61,6 +61,31 @@ Separately, the Gmail API allows about 60 sends per minute per user (6,000 quota
 
 The app blocks confirmation when active subscribers exceed the configured daily limit, and says why. It does **not** quietly spread a campaign across several days. The full list needs a bulk email provider: the sending interface (`providers/google.ts` → `gmailSend`, called only from `services/delivery.ts`) is the single place to swap one in. Gmail's bulk-sender rules for more than 5,000 messages a day also apply: SPF, DKIM, DMARC and one-click unsubscribe (implemented).
 
+## 4b. Resend (recommended for sending)
+
+Resend is the preferred sender when configured, and Gmail becomes optional. To use it:
+1. Create an API key at https://resend.com/api-keys. **Sending access** is enough. Set `RESEND_API_KEY`.
+2. **Domains → Add domain**, then add the DNS records it shows (SPF, DKIM, and optionally DMARC) and wait until the domain is *Verified*.
+3. Set `RESEND_FROM=news@yourdomain.com`. The display name comes from Settings → Email.
+   - Without a domain you can test with `onboarding@resend.dev`, but Resend then delivers **only to your own account email**.
+4. **Webhooks → Add endpoint**:
+   - URL: `https://<your-domain>/api/resend/webhook`
+   - Events: `email.bounced`, `email.complained`, `email.delivery_delayed`, `email.failed`, `email.delivered`
+   - Copy the signing secret (`whsec_…`) into `RESEND_WEBHOOK_SECRET`.
+5. Settings → Resend → **Test connection**. It reads your domains and sends nothing.
+6. Settings → Email → set **Account type: Resend** and the daily limit to match your plan: 100 on Free, or your monthly allowance on paid plans.
+
+How it behaves:
+- One recipient per request.
+- `Idempotency-Key` = delivery ID, so a request that times out is retried once safely. Resend keeps keys for 24 hours and won't send twice.
+- Pacing is about 6 requests per second, under Resend's default of 10 per second.
+- `List-Unsubscribe` and one-click headers are on every message.
+- Webhooks are verified with the Svix HMAC signature and a 5-minute replay window. They are processed only when matched to an email this app sent.
+- Permanent bounce → suppressed. Temporary bounce → recorded, and suppressed after 3 in separate editions. Delay → recorded only. Spam complaint → stops all future sends.
+- A campaign keeps the provider it started with, even if settings change mid-send.
+
+**Plan limits (Oct 2026):** Free is 100 a day and 3,000 a month. Pro is $20/month for 50,000 a month with no daily cap. That's enough for 2,200 subscribers every Thursday, once the domain is verified.
+
 ## 5. Telegram
 
 1. Message **@BotFather** → `/newbot` → copy the token into `TELEGRAM_BOT_TOKEN`.

@@ -43,7 +43,7 @@ export interface ActionMap {
   importHistory: { input: { publishDate: string; subject: string; stories: string }; output: { stories: number } };
   saveStyleGuide: { input: { content: string; examples: string }; output: { version: number } };
   saveSchedule: { input: { schedule: ScheduleConfig }; output: null };
-  saveSending: { input: { fromName: string; replyTo: string; dailyLimit: number; accountType: "gmail" | "workspace" | "custom"; newsletterName: string; footer: string }; output: null };
+  saveSending: { input: { fromName: string; replyTo: string; dailyLimit: number; accountType: "gmail" | "workspace" | "resend" | "custom"; newsletterName: string; footer: string }; output: null };
   toggleSource: { input: { id: string; enabled: boolean }; output: null };
   addSource: { input: { kind: "rss" | "news_query"; name: string; locator: string }; output: null };
   testIntegration: { input: { key: string }; output: { detail: string } };

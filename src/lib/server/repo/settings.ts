@@ -10,7 +10,7 @@ export interface SendingSettings {
   fromName: string;
   replyTo: string;
   dailyLimit: number;
-  accountType: "gmail" | "workspace" | "custom";
+  accountType: "gmail" | "workspace" | "resend" | "custom";
 }
 
 export interface WorkspaceSettings {

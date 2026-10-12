@@ -62,6 +62,18 @@ export const config = {
       webhookSecret: env("TELEGRAM_WEBHOOK_SECRET")!,
       ownerChatId: env("TELEGRAM_OWNER_CHAT_ID") ?? null,
     })),
+  resend: () =>
+    cap(["RESEND_API_KEY", "RESEND_FROM"], () => ({
+      apiKey: env("RESEND_API_KEY")!,
+      from: env("RESEND_FROM")!, // "The Dispatch <news@your-verified-domain.com>"
+      webhookSecret: env("RESEND_WEBHOOK_SECRET") ?? null,
+    })),
+  // Which provider sends the newsletter. Defaults to Resend when configured.
+  emailProvider(): "resend" | "gmail" {
+    const explicit = env("EMAIL_PROVIDER");
+    if (explicit === "gmail" || explicit === "resend") return explicit;
+    return config.resend().ok ? "resend" : "gmail";
+  },
   google: () =>
     cap(["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "TOKEN_ENCRYPTION_KEY"], () => ({
       clientId: env("GOOGLE_CLIENT_ID")!,

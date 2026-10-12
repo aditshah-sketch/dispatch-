@@ -22,6 +22,7 @@ export type IntegrationKey =
   | "scrapingbee"
   | "telegram"
   | "gmail"
+  | "resend"
   | "gmail_feedback"
   | "calendar";
 
@@ -275,7 +276,7 @@ export interface SettingsView {
   integrations: IntegrationStatus[];
   styleGuide: { version: number; content: string; examples: string; isStarter: boolean; updatedAt: string };
   schedule: ScheduleConfig;
-  sending: { fromName: string; replyTo: string; dailyLimit: number; accountType: "gmail" | "workspace" | "custom" };
+  sending: { fromName: string; replyTo: string; dailyLimit: number; accountType: "gmail" | "workspace" | "resend" | "custom" };
   newsletter: { name: string; footer: string };
   telegram: { linked: boolean; linkCode: string | null; botUsername: string | null };
   cron: { externalSchedulerUrl: string | null; note: string };

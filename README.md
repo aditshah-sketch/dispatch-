@@ -67,7 +67,7 @@ Next.js 16 (App Router, TypeScript, Tailwind 4) on Vercel, with PostgreSQL behin
 | RSS | Always on | — |
 | Gemini | Draft generation | Manual curation from Articles; nothing labelled AI |
 | Telegram | Review channel | Drafts and reminders appear in-app |
-| Gmail | Sending | Confirmation is blocked with a clear reason |
+| Resend (preferred) or Gmail | Sending | Confirmation is blocked with a clear reason |
 | GNews / ScrapingBee / Calendar / bounce feedback | Optional extras | — |
 
 Status words: *Not connected*, *Ready*, *Needs attention*, *Unavailable*.
@@ -160,6 +160,7 @@ On the live desk (`/desk`, owner password), the same screens use real data, and 
 | GNews | Yes | Contract only | **No** | `GNEWS_API_KEY` |
 | ScrapingBee | Yes | Contract only | **No** | `SCRAPINGBEE_API_KEY` |
 | Telegram review + reminders | Yes | Yes (mocked API) | **No** | Bot token, webhook secret, public HTTPS URL |
+| Resend send + webhooks | Yes | Yes (mocked API, signed webhooks) | **No** | `RESEND_API_KEY`, verified domain, `RESEND_WEBHOOK_SECRET` |
 | Gmail OAuth + send | Yes | Yes (mocked API) | **No** | Google OAuth client, consent-screen setup |
 | Bounce processing | Yes | Yes (mocked API) | **No** | `gmail.readonly` grant (restricted scope) |
 | Calendar | Yes | Yes (mocked API) | **No** | Google OAuth with Calendar scopes |
@@ -177,6 +178,7 @@ On the live desk (`/desk`, owner password), the same screens use real data, and 
 
 ## Known limitations and pending live checks
 
+- **Use Resend (Pro) for the full list:** it has no daily cap, and 50,000 a month covers 2,200 a week. Gmail is kept as an alternative.
 - **Gmail can't deliver 2,200 messages in one morning:** about 500/day on personal Gmail, about 2,000/day on Workspace, and at most ~60/min through the API. The app blocks confirmation above the configured limit instead of silently spreading delivery. A bulk provider is the real fix; the send interface is isolated for that.
 - **Untested against the live services:** Gemini, Telegram, Gmail, Calendar, GNews and ScrapingBee have only been exercised against mocks. Live verification needs the credentials above. One open detail: whether Gemini accepts the `responseFormat` field (with the automatic fallback) is confirmed only against the docs.
 - **Google consent screen:** in *Testing* status, refresh tokens expire after 7 days (the app shows *Reconnect*). `gmail.readonly` needs Google verification for external production use.

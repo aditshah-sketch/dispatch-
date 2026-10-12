@@ -27,7 +27,7 @@ import { campaignView } from "./delivery";
 import { currentEdition, finalisationContext, liveAnalysis } from "./editorial";
 import { getGoogleConnection, hasFeature } from "./google-auth";
 
-const ACCOUNT_LABEL = { gmail: "Personal Gmail (~500/day)", workspace: "Google Workspace (~2,000/day)", custom: "Custom limit" } as const;
+const ACCOUNT_LABEL = { gmail: "Personal Gmail (~500/day)", workspace: "Google Workspace (~2,000/day)", resend: "Resend (free: 100/day; Pro: no daily cap)", custom: "Custom limit" } as const;
 
 export async function weekView(db: Db): Promise<WeekView> {
   const now = new Date();
@@ -160,7 +160,7 @@ export async function audienceView(db: Db): Promise<AudienceView> {
     subscribers: subs,
     truncated: counts.total > subs.length,
     feedback: fb.map((f) => ({ id: String(f.id), at: iso(f.processed_at)!, kind: String(f.kind), recipient: (f.recipient as string) ?? null, detail: String(f.detail ?? "") })),
-    feedbackEnabled: hasFeature(google, "feedback"),
+    feedbackEnabled: hasFeature(google, "feedback") || (config.emailProvider() === "resend" && !!config.resend().value?.webhookSecret),
     sending: { account: google?.accountEmail ?? null, dailyLimit: settings.sending.dailyLimit, accountLabel: ACCOUNT_LABEL[settings.sending.accountType] },
     lastCampaign: await campaignView(db, ed.id),
   };
@@ -204,7 +204,12 @@ export async function integrationStatuses(db: Db | null): Promise<IntegrationSta
     {
       ...item("telegram", "Telegram", "Draft review, story actions, final confirmation and reminders", false, tg, settings?.telegramChatId || tg.value?.ownerChatId ? "Linked to your chat." : "Bot configured — link your chat below, then register the webhook.", ["test", "register_webhook"], "Create a bot with @BotFather and set its token and a webhook secret. Until then, drafts and reminders appear on the dashboard."),
     },
-    googleItem("gmail", "send", "Gmail", "Sends the approved edition, one recipient per message", false, "Permission: send only."),
+    {
+      ...item("resend", "Resend", "Sends the approved edition (preferred when configured)", false, config.resend(),
+        `Sending as ${config.resend().value?.from}. ${config.resend().value?.webhookSecret ? "Bounce and complaint webhooks verified." : "Add RESEND_WEBHOOK_SECRET to receive bounces and complaints."}${config.emailProvider() === "resend" ? " Active provider." : " Not active (EMAIL_PROVIDER=gmail)."}`,
+        ["test"], "Add a Resend API key and a sender on a verified domain. Either Resend or Gmail is enough to send."),
+    },
+    googleItem("gmail", "send", "Gmail", config.emailProvider() === "gmail" ? "Sends the approved edition, one recipient per message" : "Alternative sender (Resend is active)", true, "Permission: send only."),
     item("news_api", "News search (GNews)", "Query-based discovery alongside RSS", true, gn, gn.value?.plan === "free" ? "Free plan: ~12-hour delay, 10 results per query, non-commercial." : "Paid plan.", ["test"], "Optional. RSS collection works without it."),
     item("scrapingbee", "ScrapingBee", "Fetches full article pages when the feed text is too thin", true, config.scrapingBee(), `Budget: ${config.scrapingBee().value?.maxPagesPerRun ?? 25} pages per run; JavaScript rendering ${config.scrapingBee().value?.renderJs ? "on" : "off"}. Paywalls are not bypassed.`, ["test"], "Optional. Without it, stories rely on the feed summary and are marked as limited evidence."),
     googleItem("gmail_feedback", "feedback", "Gmail delivery feedback", "Reads bounce notices so dead addresses are suppressed", true, "Needs read access to the mailbox (a restricted Google scope)."),

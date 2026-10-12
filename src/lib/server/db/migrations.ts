@@ -351,4 +351,13 @@ create table rate_limits (
 )
 `,
   },
+  {
+    id: 2,
+    name: "email provider per campaign (Gmail or Resend)",
+    sql: `
+alter table campaigns add column if not exists provider text not null default 'gmail';
+alter table deliveries add column if not exists delivered_at timestamptz;
+create index if not exists deliveries_provider_message on deliveries (provider_message_id)
+`,
+  },
 ];

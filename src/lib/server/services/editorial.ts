@@ -10,26 +10,22 @@ import { articlesSince } from "../repo/articles";
 import { ConcurrentUpdateError, coveredRefs, ensureEdition, getEditionById, saveEdition } from "../repo/editions";
 import { audit, cancelJobs, enqueue, notify, subscriberCounts } from "../repo/ops";
 import { getSettings } from "../repo/settings";
-import { getGoogleConnection, hasFeature } from "./google-auth";
+import { mailerReadiness } from "./mailer";
 
 export async function currentEdition(db: Db, now = new Date()): Promise<Edition> {
   const settings = await getSettings(db);
   return ensureEdition(db, currentPublishDate(now, settings.schedule));
 }
 
-export async function finalisationContext(db: Db): Promise<FinalisationContext & { sender: string | null }> {
-  const [settings, counts, google] = await Promise.all([getSettings(db), subscriberCounts(db), getGoogleConnection(db)]);
-  const canSend = hasFeature(google, "send");
+export async function finalisationContext(db: Db): Promise<FinalisationContext & { sender: string | null; provider: "gmail" | "resend" }> {
+  const [settings, counts, mail] = await Promise.all([getSettings(db), subscriberCounts(db), mailerReadiness(db)]);
   return {
     eligibleRecipients: counts.ACTIVE,
-    sendingReady: canSend,
-    sendingIssue: !google
-      ? "Connect Gmail in Settings so the edition can be sent."
-      : google.status !== "READY"
-        ? `Gmail needs to be reconnected (${google.lastError ?? "access expired"}).`
-        : "The connected Google account hasn't granted permission to send email.",
+    sendingReady: mail.ok,
+    sendingIssue: mail.issue,
     dailyLimit: settings.sending.dailyLimit,
-    sender: google?.accountEmail ?? null,
+    sender: mail.sender,
+    provider: mail.provider,
   };
 }
 

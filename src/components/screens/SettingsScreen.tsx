@@ -208,7 +208,7 @@ function Sending({ view }: { view: SettingsView }) {
   const [f, setF] = useState({ ...view.sending, newsletterName: view.newsletter.name, footer: view.newsletter.footer });
   const [msg, setMsg] = useState<string | null>(null);
   const limitHint =
-    f.accountType === "gmail" ? "Consumer Gmail: about 500 recipients per day." : f.accountType === "workspace" ? "Google Workspace: about 2,000 messages per user per day." : "Use the limit your provider documents.";
+    f.accountType === "gmail" ? "Consumer Gmail: about 500 recipients per day." : f.accountType === "workspace" ? "Google Workspace: about 2,000 messages per user per day." : f.accountType === "resend" ? "Resend free plan: 100/day and 3,000/month. Paid plans have no daily cap — raise this to your plan's monthly allowance." : "Use the limit your provider documents.";
   return (
     <section aria-labelledby="send-h">
       <SectionTitle id="send-h" sub="Used when assembling and sending the approved edition.">Email</SectionTitle>
@@ -220,10 +220,11 @@ function Sending({ view }: { view: SettingsView }) {
           <Field label="Account type" htmlFor="at" hint={limitHint}>
             <Select id="at" value={f.accountType} onChange={(e) => {
               const accountType = e.target.value as typeof f.accountType;
-              setF({ ...f, accountType, dailyLimit: accountType === "gmail" ? 500 : accountType === "workspace" ? 2000 : f.dailyLimit });
+              setF({ ...f, accountType, dailyLimit: accountType === "gmail" ? 500 : accountType === "workspace" ? 2000 : accountType === "resend" ? 100 : f.dailyLimit });
             }}>
               <option value="gmail">Gmail (personal)</option>
               <option value="workspace">Google Workspace</option>
+              <option value="resend">Resend</option>
               <option value="custom">Custom limit</option>
             </Select>
           </Field>
