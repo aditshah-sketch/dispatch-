@@ -47,3 +47,6 @@ next-env.d.ts
 /playwright-report
 
 /.secrets
+/.agents
+/.claude
+skills-lock.json
