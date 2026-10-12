@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f6f3ed;
+  --color-surface: #fffdf9;
+  --color-sunk: #efebe3;
+  --color-rule: #e2dbcf;
+  --color-rule-strong: #cfc6b7;
+  --color-ink: #1d1b18;
+  --color-ink-2: #45403a;
+  --color-ink-3: #6b645a;
+  --color-accent: #9c3d1f;
+  --color-accent-strong: #7f2f15;
+  --color-accent-soft: #f4e4da;
+  --color-ok: #2e6a3e;
+  --color-ok-soft: #e3efe4;
+  --color-warn: #865400;
+  --color-warn-soft: #f7ebd2;
+  --color-bad: #a1292b;
+  --color-bad-soft: #f6e1df;
+  --color-info: #2f5476;
+  --color-info-soft: #e1eaf2;
+
+  --font-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  ::selection {
+    background: var(--color-accent-soft);
+  }
+  dialog::backdrop {
+    background: rgb(29 27 24 / 0.38);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .prose-email iframe {
+    border: 0;
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-fade-in {
+  animation: fade-in 160ms ease-out;
+}

@@ -1,0 +1,22 @@
+# Optional external scheduler for precise timing (Vercel Hobby crons run at
+# most once a day and up to ~59 minutes late). Calls the same authenticated,
+# idempotent tick every 10 minutes; duplicate or overlapping calls are safe.
+# Enable by adding repository secrets DISPATCH_URL (https://your-app.vercel.app)
+# and CRON_SECRET. Note: GitHub may delay scheduled workflows under load.
+name: Dispatch scheduler
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Call tick
+        env:
+          DISPATCH_URL: ${{ secrets.DISPATCH_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$DISPATCH_URL" ] || [ -z "$CRON_SECRET" ]; then echo "Secrets not set; skipping."; exit 0; fi
+          curl --fail-with-body -sS -m 300 -H "Authorization: Bearer $CRON_SECRET" "$DISPATCH_URL/api/cron/tick"
