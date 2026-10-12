@@ -360,4 +360,45 @@ alter table deliveries add column if not exists delivered_at timestamptz;
 create index if not exists deliveries_provider_message on deliveries (provider_message_id)
 `,
   },
+  {
+    id: 3,
+    name: "lock tables to the server connection (Supabase exposes public schema over REST)",
+    // RLS with no policies denies API roles; the app connects as the table
+    // owner, which bypasses RLS. Harmless on plain Postgres and PGlite.
+    sql: `
+alter table workspaces enable row level security;
+alter table workspace_settings enable row level security;
+alter table sources enable row level security;
+alter table articles enable row level security;
+alter table ingestion_runs enable row level security;
+alter table style_guides enable row level security;
+alter table editions enable row level security;
+alter table edition_stories enable row level security;
+alter table edition_revisions enable row level security;
+alter table approvals enable row level security;
+alter table published_story_refs enable row level security;
+alter table subscribers enable row level security;
+alter table campaigns enable row level security;
+alter table deliveries enable row level security;
+alter table delivery_feedback enable row level security;
+alter table integration_credentials enable row level security;
+alter table integration_health enable row level security;
+alter table jobs enable row level security;
+alter table notifications enable row level security;
+alter table audit_events enable row level security;
+alter table telegram_updates enable row level security;
+alter table telegram_actions enable row level security;
+alter table calendar_actions enable row level security;
+alter table rate_limits enable row level security;
+alter table schema_migrations enable row level security;
+do $$ begin if exists (select 1 from pg_roles where rolname = 'anon') then revoke all on all tables in schema public from anon, authenticated; revoke all on all sequences in schema public from anon, authenticated; end if; end $$
+`,
+  },
+  {
+    id: 4,
+    name: "deny API roles on tables created later",
+    sql: `
+do $$ begin if exists (select 1 from pg_roles where rolname = 'anon') then alter default privileges in schema public revoke all on tables from anon, authenticated; alter default privileges in schema public revoke all on sequences from anon, authenticated; end if; end $$
+`,
+  },
 ];

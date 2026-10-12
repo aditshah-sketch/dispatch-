@@ -2,7 +2,7 @@
 // first connection). Usage: DATABASE_URL=postgres://… npm run db:migrate
 import { MIGRATIONS } from "../src/lib/server/db/migrations.ts";
 
-const url = process.env.DATABASE_URL;
+const url = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
 if (!url) {
   console.error("DATABASE_URL is not set.");
   process.exit(1);
@@ -18,7 +18,9 @@ if (url.startsWith("pglite:")) {
   close = () => db.close();
 } else {
   const { default: postgres } = await import("postgres");
-  const sql = postgres(url, { max: 1, prepare: false });
+  const u = new URL(url);
+  for (const k of [...u.searchParams.keys()]) if (!["sslmode", "options", "application_name"].includes(k)) u.searchParams.delete(k);
+  const sql = postgres(u.toString(), { max: 1, prepare: false });
   query = async (t, p) => (await sql.unsafe(t, (p ?? []) as never[])) as unknown as Array<Record<string, unknown>>;
   close = () => sql.end();
 }

@@ -87,7 +87,11 @@ export function wrapPglite(pg: unknown): Db {
 
 async function openPostgres(url: string): Promise<Db> {
   const { default: postgres } = await import("postgres");
-  const sql = postgres(url, {
+  // postgres.js forwards unknown URL parameters to the server as settings;
+  // drop provider hints (e.g. Supabase's `supa=…`) that Postgres would reject.
+  const u = new URL(url);
+  for (const k of [...u.searchParams.keys()]) if (!["sslmode", "options", "application_name"].includes(k)) u.searchParams.delete(k);
+  const sql = postgres(u.toString(), {
     max: config.isVercel() ? 3 : 10,
     idle_timeout: 20,
     connect_timeout: 10,

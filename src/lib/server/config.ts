@@ -30,7 +30,11 @@ export const config = {
   timezone(): string {
     return env("APP_TIMEZONE") ?? "Asia/Kolkata";
   },
-  database: () => cap(["DATABASE_URL"], () => ({ url: env("DATABASE_URL")! })),
+  // DATABASE_URL, or POSTGRES_URL as injected by the Vercel Supabase/Neon integrations.
+  database: () => {
+    const url = env("DATABASE_URL") ?? env("POSTGRES_URL");
+    return url ? { ok: true, missing: [], value: { url } } : { ok: false, missing: ["DATABASE_URL"], value: null };
+  },
   auth: () =>
     cap(["AUTH_SECRET", "OWNER_PASSWORD"], () => ({
       secret: env("AUTH_SECRET")!,
