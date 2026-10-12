@@ -68,6 +68,7 @@ export function parseFeed(xml: string): { title: string | null; items: FeedItem[
     content?: string;
     author?: string;
     date?: string;
+    source?: string;
   }) => {
     const t = decodeEntities(htmlToText(raw.title)).trim();
     const link = raw.link.trim();
@@ -82,7 +83,7 @@ export function parseFeed(xml: string): { title: string | null; items: FeedItem[
       content: content && content.length > 400 ? truncate(content, 20000) : null,
       author: raw.author ? truncate(htmlToText(raw.author), 120) : null,
       publishedAt: d.iso,
-      publisher: null,
+      publisher: raw.source ? truncate(htmlToText(raw.source), 120) : null,
       dateNote: d.note,
     });
   };
@@ -99,6 +100,7 @@ export function parseFeed(xml: string): { title: string | null; items: FeedItem[
         content: text(it["content:encoded"]),
         author: text(it["dc:creator"]) || text(it.author),
         date: text(it.pubDate) || text(it["dc:date"]),
+        source: text(it.source),
       });
     }
   } else if (atom) {
@@ -128,6 +130,32 @@ export async function fetchFeed(url: string): Promise<{ title: string | null; it
     throw new Error("URL returned a web page, not a feed");
   }
   return parseFeed(res.body);
+}
+
+// ---------- Google News search (query-based discovery, no key) ----------
+// Used for news queries when no GNews key is configured. Titles arrive as
+// "Headline - Publisher" with the publisher in <source>; links redirect
+// through news.google.com, so full text isn't retrieved for these items.
+
+export function googleNewsSearchUrl(query: string): string {
+  const q = `${query} when:7d`;
+  return `https://news.google.com/rss/search?${new URLSearchParams({ q, hl: "en-IN", gl: "IN", ceid: "IN:en" })}`;
+}
+
+export async function searchGoogleNews(query: string, fromIso: string): Promise<NewsQueryResult> {
+  const res = await safeFetch(googleNewsSearchUrl(query), { timeoutMs: 15_000, maxBytes: 3_000_000 });
+  if (res.status >= 400) throw new Error(`Google News returned HTTP ${res.status}`);
+  const from = Date.parse(fromIso);
+  const items = parseFeed(res.body)
+    .items.filter((i) => !i.publishedAt || Date.parse(i.publishedAt) >= from)
+    .slice(0, 25)
+    .map((i) => {
+      const suffix = i.publisher ? ` - ${i.publisher}` : "";
+      const title = suffix && i.title.endsWith(suffix) ? i.title.slice(0, -suffix.length).trim() : i.title;
+      // Google's description only repeats the headline and source; drop it.
+      return { ...i, title, description: null, content: null };
+    });
+  return { items, note: null };
 }
 
 // ---------- GNews (news search API) ----------

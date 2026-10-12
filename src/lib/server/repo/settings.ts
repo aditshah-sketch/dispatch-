@@ -39,10 +39,10 @@ export const DEFAULT_SOURCES: Array<{ kind: "rss" | "news_query"; name: string; 
   { kind: "rss", name: "BusinessLine · Info-tech", locator: "https://www.thehindubusinessline.com/info-tech/feeder/default.rss", note: "Verified reachable 2026-10-12" },
   { kind: "rss", name: "Rest of World", locator: "https://restofworld.org/feed/latest/", note: "Verified reachable 2026-10-12 · global, filtered by relevance" },
   { kind: "rss", name: "The Ken", locator: "https://the-ken.com/feed/", note: "Verified reachable 2026-10-12 · paywalled, summaries only" },
-  { kind: "news_query", name: "Funding rounds", locator: "Indian startup raises funding", note: "GNews search" },
-  { kind: "news_query", name: "Regulation", locator: "startup India RBI OR SEBI OR MeitY", note: "GNews search" },
-  { kind: "news_query", name: "Layoffs & governance", locator: "Indian startup layoffs OR founder resigns", note: "GNews search" },
-  { kind: "news_query", name: "IPOs & acquisitions", locator: "Indian startup IPO OR acquisition", note: "GNews search" },
+  { kind: "news_query", name: "Funding rounds", locator: "Indian startup raises funding", note: "News search" },
+  { kind: "news_query", name: "Regulation", locator: "startup India RBI OR SEBI OR MeitY", note: "News search" },
+  { kind: "news_query", name: "Layoffs & governance", locator: "Indian startup layoffs OR founder resigns", note: "News search" },
+  { kind: "news_query", name: "IPOs & acquisitions", locator: "Indian startup IPO OR acquisition", note: "News search" },
 ];
 
 export async function ensureWorkspace(db: Db): Promise<void> {

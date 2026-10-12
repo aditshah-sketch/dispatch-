@@ -420,7 +420,12 @@ async function testIntegration(db: Db, key: string): Promise<ActionResult<unknow
       }
       case "news_api": {
         const g = config.newsApi();
-        if (!g.ok) return fail("UNAVAILABLE", "Not configured.");
+        if (!g.ok) {
+          const { searchGoogleNews } = await import("../providers/feeds");
+          const r = await searchGoogleNews("Indian startup", new Date(Date.now() - 3 * 86_400_000).toISOString());
+          await markHealth(db, "news_api", true);
+          return done({ detail: `Google News search returned ${r.items.length} articles from the last 3 days.` });
+        }
         const { searchGNews } = await import("../providers/feeds");
         const r = await searchGNews(g.value!.apiKey, "Indian startup", new Date(Date.now() - 3 * 86_400_000).toISOString());
         await markHealth(db, "news_api", true);

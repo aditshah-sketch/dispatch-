@@ -7,7 +7,7 @@ import { classifyTopicByRules } from "../../domain/topics";
 import { hostnameOf, normalizeUrl } from "../../domain/url";
 import { config } from "../config";
 import type { Db } from "../db/client";
-import { fetchFeed, parseFeed, searchGNews, type FeedItem } from "../providers/feeds";
+import { fetchFeed, parseFeed, searchGNews, searchGoogleNews, type FeedItem } from "../providers/feeds";
 import { fetchArticlePage, fetchRawViaScrapingBee } from "../providers/scrapingbee";
 import {
   articlesNeedingContent,
@@ -28,6 +28,8 @@ import { getSettings } from "../repo/settings";
 // Hosts known to be paywalled: never spend scraping credits trying to get
 // around them; the feed summary is used and the limitation recorded.
 const PAYWALLED_HOSTS = new Set(["the-ken.com", "theken.com", "the-arc.in", "mint-pro.livemint.com"]);
+// Redirect links (Google News) resolve via JavaScript; scraping them wastes credits.
+const REDIRECT_HOSTS = new Set(["news.google.com"]);
 
 export async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T, i: number) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array(items.length);
@@ -83,13 +85,10 @@ export async function runIngestion(db: Db, opts: { trigger: string; now?: Date; 
         }
         items = feed.items.map((i) => ({ ...i, publisher: src.name }));
       } else {
-        if (!gnews.ok) {
-          await recordSourceResult(db, src.id, { status: "SKIPPED", error: "News search not configured (GNEWS_API_KEY)", count: null });
-          stats.sourcesSkipped++;
-          sourceResults.push({ sourceId: src.id, name: src.name, status: "SKIPPED", items: 0, error: "not configured" });
-          return;
-        }
-        items = (await searchGNews(gnews.value!.apiKey, src.locator, m.collectionWindowStart)).items;
+        // GNews when a key is configured; otherwise key-free Google News search.
+        items = gnews.ok
+          ? (await searchGNews(gnews.value!.apiKey, src.locator, m.collectionWindowStart)).items
+          : (await searchGoogleNews(src.locator, m.collectionWindowStart)).items;
       }
     } catch (e) {
       const msg = (e as Error).name === "TimeoutError" ? "Timed out" : (e as Error).message;
@@ -145,7 +144,9 @@ export async function runIngestion(db: Db, opts: { trigger: string; now?: Date; 
     const toFetch: typeof candidates = [];
     for (const a of candidates) {
       const host = hostnameOf(a.url) ?? "";
-      if (PAYWALLED_HOSTS.has(host)) {
+      if (REDIRECT_HOSTS.has(host)) {
+        await saveExtraction(db, a.id, { status: "SKIPPED", text: null, note: "Found via Google News search — headline only; the same story from a publisher feed is preferred" });
+      } else if (PAYWALLED_HOSTS.has(host)) {
         await saveExtraction(db, a.id, { status: "BLOCKED", text: null, note: "Paywalled publisher — public summary only" });
       } else if (toFetch.length < sb.value!.maxPagesPerRun) toFetch.push(a);
     }

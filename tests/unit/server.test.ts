@@ -526,3 +526,30 @@ describe("Resend provider", () => {
     expect(subs["soft@example.com"]).toBe("ACTIVE");
   });
 });
+
+describe("news queries without a GNews key (Google News search)", () => {
+  it("collects query results, credits the real publisher, and groups them with the publisher's own feed item", async () => {
+    await db.query(`insert into sources (id, workspace_id, kind, name, locator) values ('rs','default','rss','Inc42','https://feeds.test/inc42'), ('q1','default','news_query','Semiconductors','India semiconductor startup')`);
+    const when = new Date(Date.now() - 86_400_000).toUTCString();
+    const gn = `<?xml version="1.0"?><rss version="2.0"><channel><title>Google News</title>
+      <item><title>Tessolve raises $75 Mn to expand semiconductor capabilities - Inc42</title><link>https://news.google.com/rss/articles/CBMiabc?oc=5</link><pubDate>${when}</pubDate><description>&lt;a href="x"&gt;Tessolve&lt;/a&gt;</description><source url="https://inc42.com">Inc42</source></item>
+      <item><title>UP cabinet approves startup procurement scheme - YourStory</title><link>https://news.google.com/rss/articles/CBMidef?oc=5</link><pubDate>${when}</pubDate><source url="https://yourstory.com">YourStory</source></item>
+    </channel></rss>`;
+    mockFetch([
+      [/news\.google\.com\/rss\/search/, (u) => {
+        expect(decodeURIComponent(u)).toContain("when:7d");
+        return new Response(gn, { headers: { "content-type": "application/rss+xml" } });
+      }],
+      [/feeds\.test\/inc42/, () => new Response(rss([{ title: "Hero Electronix-owned Tessolve secures $75 Mn to expand semiconductor capabilities", link: "https://inc42.com/tessolve", pubDate: when }]), { headers: { "content-type": "application/rss+xml" } })],
+    ]);
+    const r = await runIngestion(db, { trigger: "test" });
+    expect(r.stats.sourcesOk).toBe(2);
+    const rows = await db.query<{ publisher: string; headline: string; provenance: string; cluster_id: string | null; url: string }>(`select publisher, headline, provenance, cluster_id, url from articles order by url`);
+    const gnTessolve = rows.find((x) => x.url.includes("CBMiabc"))!;
+    expect(gnTessolve.publisher).toBe("Inc42");
+    expect(gnTessolve.headline).toBe("Tessolve raises $75 Mn to expand semiconductor capabilities");
+    expect(gnTessolve.provenance).toBe("news_api");
+    const feedTessolve = rows.find((x) => x.url === "https://inc42.com/tessolve")!;
+    expect(gnTessolve.cluster_id).toBe(feedTessolve.cluster_id); // same event, one slot
+  });
+});

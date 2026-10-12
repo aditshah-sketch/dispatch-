@@ -425,4 +425,11 @@ update workspace_settings set sending = (sending #>> '{}')::jsonb where jsonb_ty
 update workspace_settings set newsletter = (newsletter #>> '{}')::jsonb where jsonb_typeof(newsletter) = 'string';
 `,
   },
+  {
+    id: 6,
+    name: "news query sources: Google News fallback",
+    sql: `
+update sources set verified_note = 'News search' where kind = 'news_query' and verified_note = 'GNews search'
+`,
+  },
 ];

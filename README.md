@@ -39,7 +39,7 @@ Next.js 16 (App Router, TypeScript, Tailwind 4) on Vercel, with PostgreSQL behin
 
 | Requirement | Implementation |
 |---|---|
-| Ingest Mon–Wed from RSS + news API | 12 verified RSS feeds + GNews queries; bounded concurrency (4), per-source isolation, idempotent upsert on normalised URL |
+| Ingest Mon–Wed from RSS + news API | 12 verified RSS feeds + 4 news-search queries (Google News search, key-free; GNews API used instead when `GNEWS_API_KEY` is set); bounded concurrency (4), per-source isolation, idempotent upsert on normalised URL |
 | Duplicates & overlapping coverage | Exact: normalised URL (tracking params stripped conservatively) + content fingerprint, with DB uniqueness. Same event: deterministic star clustering (entities, event type, amounts, text similarity), refined by Gemini's `sameEventAs`. Corroborating sources are kept on the story |
 | Exclude last 4 *published* editions | `published_story_refs` written when the first copy is accepted. Same event → excluded. Same company, different development → eligible but flagged. Partial history (<4) is shown, never claimed complete |
 | Wed afternoon Gemini selection, 8–10 stories, ≥3 topics | Staged: deterministic filter → batch evaluation (rubric) → selection → commentary → deterministic validation. One repair attempt, then a deterministic fill. Never pads with invented stories |
@@ -157,7 +157,7 @@ On the live desk (`/desk`, owner password), the same screens use real data, and 
 | Durable storage | Yes | Yes (PGlite) | **Yes** — Supabase (Mumbai) via Vercel, migrations applied, REST access locked down | — |
 | Owner auth | Yes | Yes | Configured on Vercel; owner sign-in to be done by the owner | — |
 | Gemini drafting | Yes | Yes | **Yes** — `gemini-3.8-flash` on production: 9-story, 7-topic draft from live articles in 63 s (locally the evidence check rejected one unsupported amount) | — |
-| GNews | Yes | Contract only | **No** | `GNEWS_API_KEY` |
+| News search queries | Yes | Yes | **Yes** — Google News search (no key): 4 live queries returned 79 results, matched to RSS coverage as same-event | Optional `GNEWS_API_KEY` for the GNews API |
 | ScrapingBee | Yes | Yes | **Yes** — production run: 19 pages extracted, 7 paywalled skipped, 25-credit budget respected | — |
 | Telegram review + reminders | Yes | Yes | **Yes** — owner chat linked; production draft delivered to Telegram | — |
 | Resend send + webhooks | Yes | Yes | **Yes** — real send accepted; idempotent retry returned the same ID; webhook registered | Verify `pg27.mesaschool.co` DNS (docs/RESEND_DNS.md) to reach real subscribers |

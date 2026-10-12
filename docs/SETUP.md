@@ -103,7 +103,10 @@ How it behaves:
 - An old message can't approve changed content: the final confirmation re-checks the revision and content hash.
 - Updates from any other chat are ignored and audited. Redelivered updates are deduplicated by `update_id`.
 
-## 6. GNews (news search, optional)
+## 6. News search: Google News (default) or GNews (optional)
+
+Without a key, the four news queries run as **Google News search feeds** restricted to India and the last 7 days. Each result credits the original publisher. The link goes through news.google.com, so only the headline is used, and the story is grouped with the publisher's own feed item when one exists. Setting a GNews key switches the queries to the GNews API.
+
 
 Sign up at https://gnews.io and set `GNEWS_API_KEY`.
 

@@ -120,7 +120,7 @@ export async function articlesView(db: Db): Promise<ArticlesView> {
     draftSize: ed.stories.length,
     isSample: false,
     newsApiNote: !gnews.ok
-      ? "News search is off (GNEWS_API_KEY not set). RSS collection still runs."
+      ? "News queries run through Google News search (no key needed). Results are headline-only; when a publisher feed carries the same story, that fuller version is used."
       : gnews.value!.plan === "free"
         ? "GNews free plan: results are delayed by about 12 hours and limited to 10 per query. The free plan is for non-commercial use."
         : null,
@@ -210,7 +210,11 @@ export async function integrationStatuses(db: Db | null): Promise<IntegrationSta
         ["test"], "Add a Resend API key and a sender on a verified domain. Either Resend or Gmail is enough to send."),
     },
     googleItem("gmail", "send", "Gmail", config.emailProvider() === "gmail" ? "Sends the approved edition, one recipient per message" : "Alternative sender (Resend is active)", true, "Permission: send only."),
-    item("news_api", "News search (GNews)", "Query-based discovery alongside RSS", true, gn, gn.value?.plan === "free" ? "Free plan: ~12-hour delay, 10 results per query, non-commercial." : "Paid plan.", ["test"], "Optional. RSS collection works without it."),
+    item("news_api", "News search", "Query-based discovery alongside RSS", false, { ok: true, missing: [] },
+      gn.ok
+        ? `GNews API (${gn.value!.plan === "free" ? "free plan: ~12-hour delay, 10 results per query, non-commercial" : "paid plan"}).`
+        : "Google News search (no key needed), restricted to India, last 7 days. Add GNEWS_API_KEY to use the GNews API instead.",
+      ["test"]),
     item("scrapingbee", "ScrapingBee", "Fetches full article pages when the feed text is too thin", true, config.scrapingBee(), `Budget: ${config.scrapingBee().value?.maxPagesPerRun ?? 25} pages per run; JavaScript rendering ${config.scrapingBee().value?.renderJs ? "on" : "off"}. Paywalls are not bypassed.`, ["test"], "Optional. Without it, stories rely on the feed summary and are marked as limited evidence."),
     googleItem("gmail_feedback", "feedback", "Gmail delivery feedback", "Reads bounce notices so dead addresses are suppressed", true, "Needs read access to the mailbox (a restricted Google scope)."),
     googleItem("calendar", "calendar", "Google Calendar", "Optional review blocks and confirmed follow-up meetings", true, "Never required for the newsletter."),
