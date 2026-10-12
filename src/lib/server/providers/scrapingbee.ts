@@ -56,6 +56,16 @@ export async function fetchArticlePage(apiKey: string, url: string, opts: { rend
   return { status: "EXTRACTED", text: extracted, note: null, credits };
 }
 
+// Raw fetch (no extraction) for an RSS feed that blocks data-centre IPs.
+// Still the publisher's own feed; ScrapingBee only relays it (1 credit).
+export async function fetchRawViaScrapingBee(apiKey: string, url: string): Promise<string> {
+  await assertPublicUrl(url);
+  const params = new URLSearchParams({ url, render_js: "false", block_resources: "true", timeout: "20000" });
+  const res = await apiFetch(`https://app.scrapingbee.com/api/v1/?${params}`, { headers: { Authorization: `Bearer ${apiKey}` }, timeoutMs: 25_000 });
+  if (!res.ok) throw new Error(`ScrapingBee relay failed (${res.headers.get("spb-initial-status-code") ?? res.status})`);
+  return (await res.text()).slice(0, 4_000_000);
+}
+
 // Deterministic readable-text extraction: prefer <article>/<main>, then
 // collect paragraph text; drop navigation, scripts and boilerplate.
 export function extractArticleText(html: string): string {

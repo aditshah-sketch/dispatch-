@@ -7,8 +7,8 @@ import { classifyTopicByRules } from "../../domain/topics";
 import { hostnameOf, normalizeUrl } from "../../domain/url";
 import { config } from "../config";
 import type { Db } from "../db/client";
-import { fetchFeed, searchGNews, type FeedItem } from "../providers/feeds";
-import { fetchArticlePage } from "../providers/scrapingbee";
+import { fetchFeed, parseFeed, searchGNews, type FeedItem } from "../providers/feeds";
+import { fetchArticlePage, fetchRawViaScrapingBee } from "../providers/scrapingbee";
 import {
   articlesNeedingContent,
   articlesSince,
@@ -70,7 +70,17 @@ export async function runIngestion(db: Db, opts: { trigger: string; now?: Date; 
     let items: FeedItem[] = [];
     try {
       if (src.kind === "rss") {
-        const feed = await fetchFeed(src.locator);
+        let feed: Awaited<ReturnType<typeof fetchFeed>>;
+        try {
+          feed = await fetchFeed(src.locator);
+        } catch (e) {
+          // Some publishers block cloud IPs (HTTP 403/429). Relay the same feed
+          // through ScrapingBee if configured; otherwise report the failure.
+          const sb = config.scrapingBee();
+          if (!sb.ok || !/HTTP (401|403|429)/.test((e as Error).message)) throw e;
+          feed = parseFeed(await fetchRawViaScrapingBee(sb.value!.apiKey, src.locator));
+          stats.credits += 1;
+        }
         items = feed.items.map((i) => ({ ...i, publisher: src.name }));
       } else {
         if (!gnews.ok) {

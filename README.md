@@ -153,18 +153,18 @@ On the live desk (`/desk`, owner password), the same screens use real data, and 
 | Feature | Implemented | Tested locally | Tested live | Remaining dependency |
 |---|---|---|---|---|
 | Preview journey | Yes | Yes (e2e) | Yes (deployed preview) | — |
-| RSS ingestion + dedupe + clustering | Yes | Yes | Yes, against real feeds (local) | Hosted DB for production |
-| Durable storage | Yes | Yes (PGlite) | No | Hosted Postgres `DATABASE_URL` |
-| Owner auth | Yes | Yes | Local only | `AUTH_SECRET`, `OWNER_PASSWORD` on Vercel |
-| Gemini drafting | Yes | Yes (mocked API) | **No** | `GEMINI_API_KEY` |
+| RSS ingestion + dedupe + clustering | Yes | Yes | **Yes** — production run: 337 items, 11/12 feeds (MediaNama blocks cloud IPs → now relayed via ScrapingBee) | — |
+| Durable storage | Yes | Yes (PGlite) | **Yes** — Supabase (Mumbai) via Vercel, migrations applied, REST access locked down | — |
+| Owner auth | Yes | Yes | Configured on Vercel; owner sign-in to be done by the owner | — |
+| Gemini drafting | Yes | Yes | **Yes** — `gemini-3.8-flash`: real 8-story, 7-topic draft from live articles; the evidence check rejected one unsupported amount | — |
 | GNews | Yes | Contract only | **No** | `GNEWS_API_KEY` |
-| ScrapingBee | Yes | Contract only | **No** | `SCRAPINGBEE_API_KEY` |
-| Telegram review + reminders | Yes | Yes (mocked API) | **No** | Bot token, webhook secret, public HTTPS URL |
-| Resend send + webhooks | Yes | Yes (mocked API, signed webhooks) | **No** | `RESEND_API_KEY`, verified domain, `RESEND_WEBHOOK_SECRET` |
+| ScrapingBee | Yes | Yes | **Yes** — production run: 19 pages extracted, 7 paywalled skipped, 25-credit budget respected | — |
+| Telegram review + reminders | Yes | Yes | Bot + production webhook verified (forged requests rejected) | Owner links chat (`/start CODE`) |
+| Resend send + webhooks | Yes | Yes | **Yes** — real send accepted; idempotent retry returned the same ID; webhook registered | Verify `pg27.mesaschool.co` DNS (docs/RESEND_DNS.md) to reach real subscribers |
 | Gmail OAuth + send | Yes | Yes (mocked API) | **No** | Google OAuth client, consent-screen setup |
 | Bounce processing | Yes | Yes (mocked API) | **No** | `gmail.readonly` grant (restricted scope) |
 | Calendar | Yes | Yes (mocked API) | **No** | Google OAuth with Calendar scopes |
-| Scheduler | Yes | Yes (authenticated ticks) | **No** | `CRON_SECRET`, DB; Pro plan or external scheduler for exact times |
+| Scheduler | Yes | Yes | **Yes** — authenticated production tick ran Monday's collection; Vercel crons in `vercel.json` | Hobby timing ±59 min (or external scheduler) |
 
 ## Assumptions
 
