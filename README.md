@@ -156,10 +156,10 @@ On the live desk (`/desk`, owner password), the same screens use real data, and 
 | RSS ingestion + dedupe + clustering | Yes | Yes | **Yes** — production run: 337 items, 11/12 feeds (MediaNama blocks cloud IPs → now relayed via ScrapingBee) | — |
 | Durable storage | Yes | Yes (PGlite) | **Yes** — Supabase (Mumbai) via Vercel, migrations applied, REST access locked down | — |
 | Owner auth | Yes | Yes | Configured on Vercel; owner sign-in to be done by the owner | — |
-| Gemini drafting | Yes | Yes | **Yes** — `gemini-3.8-flash`: real 8-story, 7-topic draft from live articles; the evidence check rejected one unsupported amount | — |
+| Gemini drafting | Yes | Yes | **Yes** — `gemini-3.8-flash` on production: 9-story, 7-topic draft from live articles in 63 s (locally the evidence check rejected one unsupported amount) | — |
 | GNews | Yes | Contract only | **No** | `GNEWS_API_KEY` |
 | ScrapingBee | Yes | Yes | **Yes** — production run: 19 pages extracted, 7 paywalled skipped, 25-credit budget respected | — |
-| Telegram review + reminders | Yes | Yes | Bot + production webhook verified (forged requests rejected) | Owner links chat (`/start CODE`) |
+| Telegram review + reminders | Yes | Yes | **Yes** — owner chat linked; production draft delivered to Telegram | — |
 | Resend send + webhooks | Yes | Yes | **Yes** — real send accepted; idempotent retry returned the same ID; webhook registered | Verify `pg27.mesaschool.co` DNS (docs/RESEND_DNS.md) to reach real subscribers |
 | Gmail OAuth + send | Yes | Yes (mocked API) | **No** | Google OAuth client, consent-screen setup |
 | Bounce processing | Yes | Yes (mocked API) | **No** | `gmail.readonly` grant (restricted scope) |
@@ -184,6 +184,7 @@ On the live desk (`/desk`, owner password), the same screens use real data, and 
 - **Google consent screen:** in *Testing* status, refresh tokens expire after 7 days (the app shows *Reconnect*). `gmail.readonly` needs Google verification for external production use.
 - **Hobby cron precision:** see Scheduling above.
 - **Uncertain sends:** a Gmail call that times out is recorded as *UNKNOWN* and never retried automatically. "Resend uncertain" asks for confirmation, and first checks Sent mail when read access exists.
+- **Found in production and fixed:** postgres.js double-encoded JSON parameters (PGlite doesn't), so some settings and job payloads were stored as JSON strings. The fix casts through text, migration 5 repaired the stored rows, and a regression test was added. Integration tests run on PGlite; production behaviour was checked against Supabase directly.
 - **DNS rebinding:** feed URLs are validated before each request and redirect, but not pinned to the resolved IP.
 
 ## Deployment
