@@ -1,0 +1,437 @@
+<title>Dispatch Components Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: an engineering sheet — wide diagram band, then reference sections in a readable column. */
+:root {
+  --bg: #f2f4f7;
+  --surface: #ffffff;
+  --fg: #151b27;
+  --muted: #586376;
+  --line: #c9d1dd;
+  --accent: #2646c4;
+  --accent-soft: #e6ebfb;
+  --ext: #2b7a68;
+  --ext-soft: #e1f1ec;
+  --gate: #b0600a;
+  --gate-soft: #fff0d4;
+  --ok: #24794a;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --font-body: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1219; --surface: #161c27; --fg: #e5eaf2; --muted: #97a2b4; --line: #2b3445;
+    --accent: #87a0ff; --accent-soft: #1b2546; --ext: #5cc6aa; --ext-soft: #11302a;
+    --gate: #f1aa4c; --gate-soft: #392810; --ok: #5ccf8c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1219; --surface: #161c27; --fg: #e5eaf2; --muted: #97a2b4; --line: #2b3445;
+  --accent: #87a0ff; --accent-soft: #1b2546; --ext: #5cc6aa; --ext-soft: #11302a;
+  --gate: #f1aa4c; --gate-soft: #392810; --ok: #5ccf8c; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body);
+  font-size: 16px; line-height: 1.55; margin: 0;
+  padding-inline: clamp(16px, 4vw, 48px); padding-block: 40px 72px;
+}
+.wrap { max-width: 1240px; margin-inline: auto; display: grid; gap: 56px; }
+.col { max-width: 880px; }
+h1, h2 { font-family: var(--font-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(32px, 5vw, 52px); line-height: 1.05; font-weight: 700; }
+h2 { font-size: 26px; line-height: 1.2; font-weight: 700; }
+p { margin: 0; }
+.lede { font-size: 19px; color: var(--muted); max-width: 62ch; margin-top: 12px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+.links { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 20px; font-size: 15px; }
+.links span { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-right: 6px; }
+section { display: grid; gap: 18px; }
+.section-head { display: grid; gap: 6px; }
+.section-head p { color: var(--muted); max-width: 70ch; }
+
+/* Legend */
+.legend { display: flex; flex-wrap: wrap; gap: 10px 22px; font-size: 13px; color: var(--muted); }
+.key { display: inline-flex; align-items: center; gap: 8px; }
+.sw { width: 22px; height: 14px; border-radius: 3px; border: 1.5px solid; display: inline-block; }
+.sw.int { background: var(--surface); border-color: var(--accent); }
+.sw.ext { background: var(--ext-soft); border-color: var(--ext); }
+.sw.gate { background: var(--gate-soft); border-color: var(--gate); border-width: 2.5px; }
+.sw.opt { background: transparent; border-color: var(--muted); border-style: dashed; }
+.sw.db { width: 22px; height: 0; border: 0; border-top: 2px dotted var(--muted); border-radius: 0; }
+
+/* Diagram figures */
+figure { margin: 0; display: grid; gap: 12px; }
+.canvas { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; padding: 18px 14px; }
+.canvas svg { display: block; width: 100%; height: auto; color: var(--fg); }
+.canvas.wide svg { min-width: 980px; }
+.canvas.mid svg { min-width: 720px; }
+figcaption { font-size: 14px; color: var(--muted); max-width: 80ch; }
+
+svg text { font-family: var(--font-body); fill: currentColor; }
+svg .t-title { font-size: 14px; font-weight: 600; }
+svg .t-sub { font-size: 11.5px; fill: var(--muted); }
+svg .t-arrow { font-size: 11px; fill: var(--muted); font-family: var(--font-mono); }
+svg .t-stage { font-size: 11px; font-family: var(--font-mono); letter-spacing: .1em; fill: var(--muted); }
+svg .b-int { fill: var(--surface); stroke: var(--accent); stroke-width: 1.5; }
+svg .b-ext { fill: var(--ext-soft); stroke: var(--ext); stroke-width: 1.5; }
+svg .b-gate { fill: var(--gate-soft); stroke: var(--gate); stroke-width: 3; }
+svg .b-opt { fill: var(--surface); stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
+svg .b-people { fill: var(--surface); stroke: currentColor; stroke-width: 1.5; }
+svg .b-band { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+svg .b-sched { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+svg .flow { fill: none; stroke: currentColor; stroke-width: 1.5; }
+svg .flow.gate { stroke: var(--gate); stroke-width: 2; }
+svg .flow.opt { stroke: var(--muted); stroke-dasharray: 5 4; }
+svg .flow.back { stroke: var(--gate); stroke-dasharray: 6 4; }
+svg .halo { fill: none; stroke: var(--surface); stroke-width: 7; }
+svg .dbl { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 2 4; }
+svg .head { fill: currentColor; }
+svg .head-gate { fill: var(--gate); }
+svg .head-opt { fill: var(--muted); }
+svg .gate-label { fill: var(--gate); font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .12em; }
+svg .st { fill: var(--surface); stroke: currentColor; stroke-width: 1.5; }
+svg .st-good { fill: var(--surface); stroke: var(--ok); stroke-width: 2; }
+svg .st-gate { fill: var(--gate-soft); stroke: var(--gate); stroke-width: 2.5; }
+svg .st-text { font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
+
+/* Tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; min-width: 640px; }
+th, td { text-align: left; vertical-align: top; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: 0; }
+th { font-family: var(--font-mono); font-weight: 500; font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+td:first-child { font-weight: 600; }
+code { font-family: var(--font-mono); font-size: 0.86em; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; overflow-wrap: anywhere; }
+.never { color: var(--muted); }
+
+/* Weekly run */
+.week { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.week li { padding: 16px 16px 18px; border-right: 1px solid var(--line); display: grid; gap: 6px; align-content: start; min-width: 0; }
+.week li:last-child { border-right: 0; }
+.week .when { font-family: var(--font-mono); font-size: 12.5px; color: var(--accent); font-variant-numeric: tabular-nums; }
+.week .what { font-weight: 600; }
+.week .how { font-size: 13.5px; color: var(--muted); }
+.week li.gate-step { background: var(--gate-soft); }
+.week li.gate-step .when { color: var(--gate); }
+.note { font-size: 13.5px; color: var(--muted); }
+
+/* Status */
+.status { display: grid; gap: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.status div { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); font-size: 14.5px; }
+.status div:last-child { border-bottom: 0; }
+.dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 7px; background: var(--ok); }
+.dot.warn { background: var(--gate); }
+.status b { font-weight: 600; }
+
+@media (max-width: 640px) {
+  .week li { border-right: 0; border-bottom: 1px solid var(--line); }
+  .week li:last-child { border-bottom: 0; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="wrap">
+  <header class="col">
+    <div class="eyebrow">The Dispatch · Newsletter intelligence engine</div>
+    <h1>Components Map</h1>
+    <p class="lede">How a week of Indian startup news becomes one approved email, and which parts are allowed to reach the outside world.</p>
+    <div class="links">
+      <a href="https://the-dispatch-liard.vercel.app"><span>Live</span>the-dispatch-liard.vercel.app</a>
+      <a href="https://github.com/aditshah-sketch/dispatch-"><span>Code</span>github.com/aditshah-sketch/dispatch-</a>
+    </div>
+  </header>
+
+  <section aria-labelledby="map-h">
+    <div class="section-head col">
+      <h2 id="map-h">The system</h2>
+      <p>Left to right is the week: collect, draft, review, approve, deliver. Everything persists in one Postgres database, and a scheduler queues each step at its time.</p>
+    </div>
+    <div class="legend" aria-label="Legend">
+      <span class="key"><i class="sw int"></i>Our component</span>
+      <span class="key"><i class="sw ext"></i>External service</span>
+      <span class="key"><i class="sw gate"></i>Human approval</span>
+      <span class="key"><i class="sw opt"></i>Optional</span>
+      <span class="key"><i class="sw db"></i>Reads and writes the database</span>
+    </div>
+    <figure>
+      <div class="canvas wide">
+        <svg viewBox="0 0 1432 520" role="img" aria-label="News flows from RSS feeds, Google News search and ScrapingBee into ingestion, then analysis, then Gemini drafting. The draft goes to the dashboard and Telegram for review. Only the owner's final confirmation of an exact revision lets the send job email readers through Resend. Bounces, spam complaints and unsubscribes feed a suppression list. Everything is stored in Supabase Postgres and the scheduler queues each step.">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0 0 L10 5 L0 10 z"/></marker>
+            <marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-gate" d="M0 0 L10 5 L0 10 z"/></marker>
+            <marker id="aho" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-opt" d="M0 0 L10 5 L0 10 z"/></marker>
+          </defs>
+
+          <!-- stage labels -->
+          <text class="t-stage" x="196" y="28" text-anchor="middle">COLLECT</text>
+          <text class="t-stage" x="514" y="28" text-anchor="middle">DRAFT</text>
+          <text class="t-stage" x="726" y="28" text-anchor="middle">REVIEW</text>
+          <text class="t-stage" x="938" y="28" text-anchor="middle">APPROVE</text>
+          <text class="t-stage" x="1246" y="28" text-anchor="middle">DELIVER</text>
+
+          <!-- database connectors (drawn first, behind boxes) -->
+          <line class="dbl" x1="302" y1="324" x2="302" y2="368"/>
+          <line class="dbl" x1="514" y1="214" x2="514" y2="368"/>
+          <line class="dbl" x1="726" y1="324" x2="726" y2="368"/>
+          <line class="dbl" x1="938" y1="214" x2="938" y2="368"/>
+          <line class="dbl" x1="1150" y1="214" x2="1150" y2="368"/>
+          <line class="dbl" x1="1352" y1="214" x2="1352" y2="368"/>
+
+          <!-- COLLECT: sources -->
+          <rect class="b-ext" x="20" y="48" width="140" height="56" rx="7"/>
+          <text class="t-title" x="90" y="72" text-anchor="middle">12 RSS feeds</text>
+          <text class="t-sub" x="90" y="90" text-anchor="middle">Inc42, ET, Mint…</text>
+
+          <rect class="b-ext" x="20" y="158" width="140" height="56" rx="7"/>
+          <text class="t-title" x="90" y="182" text-anchor="middle">Google News</text>
+          <text class="t-sub" x="90" y="200" text-anchor="middle">4 India queries</text>
+
+          <rect class="b-ext" x="20" y="268" width="140" height="56" rx="7"/>
+          <text class="t-title" x="90" y="292" text-anchor="middle">ScrapingBee</text>
+          <text class="t-sub" x="90" y="310" text-anchor="middle">25 pages / run</text>
+
+          <!-- ingestion -->
+          <rect class="b-int" x="232" y="48" width="140" height="276" rx="7"/>
+          <text class="t-title" x="302" y="166" text-anchor="middle">Ingestion</text>
+          <text class="t-sub" x="302" y="186" text-anchor="middle">clean URLs</text>
+          <text class="t-sub" x="302" y="202" text-anchor="middle">fingerprint text</text>
+          <text class="t-sub" x="302" y="218" text-anchor="middle">store each once</text>
+
+          <path class="flow" d="M160 76 H228" marker-end="url(#ah)"/>
+          <text class="t-arrow" x="196" y="68" text-anchor="middle">items</text>
+          <path class="flow" d="M160 186 H228" marker-end="url(#ah)"/>
+          <text class="t-arrow" x="196" y="178" text-anchor="middle">results</text>
+          <path class="flow" d="M160 296 H228" marker-end="url(#ah)"/>
+          <text class="t-arrow" x="196" y="288" text-anchor="middle">full text</text>
+
+          <!-- DRAFT -->
+          <rect class="b-int" x="444" y="48" width="140" height="56" rx="7"/>
+          <text class="t-title" x="514" y="72" text-anchor="middle">Analysis</text>
+          <text class="t-sub" x="514" y="90" text-anchor="middle">dupes · same event</text>
+
+          <rect class="b-ext" x="444" y="158" width="140" height="56" rx="7"/>
+          <text class="t-title" x="514" y="182" text-anchor="middle">Gemini Flash</text>
+          <text class="t-sub" x="514" y="200" text-anchor="middle">pick 8–10 · write</text>
+
+          <path class="flow" d="M372 76 H440" marker-end="url(#ah)"/>
+          <text class="t-arrow" x="408" y="68" text-anchor="middle">this week</text>
+          <path class="flow" d="M514 104 V154" marker-end="url(#ah)"/>
+          <text class="t-arrow" x="522" y="133">1 per event,</text>
+          <text class="t-arrow" x="522" y="146">not last 4 eds</text>
+
+          <!-- REVIEW -->
+          <rect class="b-int" x="656" y="48" width="140" height="56" rx="7"/>
+          <text class="t-title" x="726" y="72" text-anchor="middle">Dashboard</text>
+          <text class="t-sub" x="726" y="90" text-anchor="middle">edit · swap · remove</text>
+
+          <rect class="b-ext" x="656" y="158" width="140" height="56" rx="7"/>
+          <text class="t-title" x="726" y="182" text-anchor="middle">Telegram bot</text>
+          <text class="t-sub" x="726" y="200" text-anchor="middle">owner chat only</text>
+
+          <rect class="b-opt" x="656" y="268" width="140" height="56" rx="7"/>
+          <text class="t-title" x="726" y="292" text-anchor="middle">Google Calendar</text>
+          <text class="t-sub" x="726" y="310" text-anchor="middle">own Confirm &amp; book</text>
+
+          <path class="flow" d="M584 186 H652" marker-end="url(#ah)"/>
+          <path class="flow" d="M620 186 V76 H652" marker-end="url(#ah)"/>
+          <text class="t-arrow" x="602" y="178" text-anchor="middle">draft</text>
+
+          <!-- optional follow-up path, bridged under the Telegram → gate arrow -->
+          <path class="flow opt" d="M796 90 H820 V296 H800" marker-end="url(#aho)"/>
+          <text class="t-arrow" x="828" y="258">plan follow-up</text>
+
+          <!-- APPROVE: human gate -->
+          <rect class="b-gate" x="868" y="98" width="140" height="116" rx="8"/>
+          <text class="gate-label" x="938" y="124" text-anchor="middle">HUMAN GATE</text>
+          <text class="t-title" x="938" y="150" text-anchor="middle">Final confirmation</text>
+          <text class="t-sub" x="938" y="170" text-anchor="middle">exact revision +</text>
+          <text class="t-sub" x="938" y="186" text-anchor="middle">content hash</text>
+          <text class="t-sub" x="938" y="202" text-anchor="middle">edit = re-approve</text>
+
+          <path class="flow gate" d="M796 76 H832 V126 H864" marker-end="url(#ahg)"/>
+          <path class="halo" d="M806 186 H834"/>
+          <path class="flow gate" d="M796 186 H864" marker-end="url(#ahg)"/>
+
+          <!-- DELIVER -->
+          <rect class="b-int" x="1080" y="48" width="140" height="56" rx="7"/>
+          <text class="t-title" x="1150" y="72" text-anchor="middle">Send job</text>
+          <text class="t-sub" x="1150" y="90" text-anchor="middle">re-checks approval</text>
+
+          <rect class="b-ext" x="1080" y="158" width="140" height="56" rx="7"/>
+          <text class="t-title" x="1150" y="182" text-anchor="middle">Resend</text>
+          <text class="t-sub" x="1150" y="200" text-anchor="middle">no duplicate sends</text>
+
+          <rect class="b-people" x="1292" y="48" width="120" height="56" rx="28"/>
+          <text class="t-title" x="1352" y="72" text-anchor="middle">Readers</text>
+          <text class="t-sub" x="1352" y="90" text-anchor="middle">1 email each</text>
+
+          <rect class="b-int" x="1292" y="158" width="120" height="56" rx="7"/>
+          <text class="t-title" x="1352" y="182" text-anchor="middle">Suppression</text>
+          <text class="t-sub" x="1352" y="200" text-anchor="middle">never emailed</text>
+
+          <path class="flow gate" d="M1008 156 H1044 V76 H1076" marker-end="url(#ahg)"/>
+          <text class="t-arrow" x="1044" y="174" text-anchor="middle">approved</text>
+          <text class="t-arrow" x="1044" y="187" text-anchor="middle">snapshot</text>
+          <path class="flow" d="M1150 104 V154" marker-end="url(#ah)"/>
+          <text class="t-arrow" x="1158" y="133">per reader</text>
+          <path class="flow" d="M1220 172 H1256 V76 H1288" marker-end="url(#ah)"/>
+          <text class="t-arrow" x="1262" y="124">delivers</text>
+          <path class="flow" d="M1220 200 H1288" marker-end="url(#ah)"/>
+          <text class="t-arrow" x="1254" y="226" text-anchor="middle">bounces,</text>
+          <text class="t-arrow" x="1254" y="239" text-anchor="middle">spam reports</text>
+          <path class="flow" d="M1352 104 V154" marker-end="url(#ah)"/>
+          <text class="t-arrow" x="1360" y="133">unsubscribe</text>
+
+          <!-- database band -->
+          <rect class="b-band" x="232" y="368" width="1180" height="52" rx="7"/>
+          <text class="t-title" x="252" y="390">Postgres · Supabase, Mumbai</text>
+          <text class="t-sub" x="252" y="408">articles · editions and frozen revisions · approvals · deliveries · job queue · audit log · locked to the server connection</text>
+
+          <!-- scheduler band -->
+          <rect class="b-sched" x="232" y="448" width="1180" height="52" rx="7"/>
+          <text class="t-title" x="252" y="470">Scheduler · Vercel Cron → /api/cron (secret-protected)</text>
+          <text class="t-sub" x="252" y="488">Mon–Wed 08:00 collect · Wed 15:00 draft · 18:00 to Telegram · 22:00 reminder · Thu 09:00 send, only if approved</text>
+          <path class="flow" d="M1300 448 V424" marker-end="url(#ah)"/>
+          <text class="t-arrow" x="1308" y="440">queues due jobs</text>
+        </svg>
+      </div>
+      <figcaption>The only path to readers runs through the amber gate. The send job verifies, at send time, that the approval matches the current revision and its frozen snapshot, and rechecks each reader against the suppression list before every email.</figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="effects-h">
+    <div class="section-head col">
+      <h2 id="effects-h">What can reach the outside world</h2>
+      <p>Every outgoing effect has one thing that authorises it, enforced on the server. Buttons being disabled is never the protection.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Effect</th><th>Goes through</th><th>Authorised only by</th><th>Never authorised by</th></tr></thead>
+        <tbody>
+          <tr><td>Email to subscribers</td><td>Send job → Resend</td><td>The owner's final confirmation of the current revision, at or after the chosen send time</td><td class="never">An AI draft, story approvals, a reminder, a passed deadline, a calendar event, a background job</td></tr>
+          <tr><td>Messages to Telegram</td><td>Telegram bot</td><td>Draft delivery (Wed 18:00), the once-per-edition 22:00 reminder, or the owner's own action</td><td class="never">Anyone other than the linked owner chat</td></tr>
+          <tr><td>Calendar event or invitation</td><td>Google Calendar</td><td>A separate "Confirm and book" carrying a hash of the exact details reviewed</td><td class="never">Approving a story or the newsletter; AI suggestions</td></tr>
+          <tr><td>Article page fetch</td><td>ScrapingBee</td><td>A collection run, for thin articles, within 25 pages per run</td><td class="never">Paywalled sites and Google redirect links (skipped)</td></tr>
+          <tr><td>AI processing</td><td>Gemini Flash</td><td>Draft generation, rewriting one story, suggesting a meeting agenda</td><td class="never">Text inside articles, which is treated as data and can't trigger anything</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="week-h">
+    <div class="section-head col">
+      <h2 id="week-h">One week, in order</h2>
+      <p>Times are India Standard Time. On Vercel's free plan each step can start up to an hour late.</p>
+    </div>
+    <ol class="week">
+      <li><span class="when">Mon–Wed · 08:00</span><span class="what">Collect</span><span class="how">Feeds and searches stored once; same-event coverage grouped; last four editions excluded.</span></li>
+      <li><span class="when">Wed · 15:00</span><span class="what">Draft</span><span class="how">Gemini scores candidates, picks 8–10 across 3+ topics and writes 2–3 sentences each.</span></li>
+      <li><span class="when">Wed · 18:00</span><span class="what">Review</span><span class="how">Draft arrives in Telegram with Approve, Edit and Swap on every story.</span></li>
+      <li class="gate-step"><span class="when">Wed · 22:00</span><span class="what">Reminder if unconfirmed</span><span class="how">A nudge, once. Silence never sends anything.</span></li>
+      <li><span class="when">Thu · 09:00</span><span class="what">Deliver</span><span class="how">Sends the approved snapshot only. No approval, no email.</span></li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="states-h">
+    <div class="section-head col">
+      <h2 id="states-h">Edition states</h2>
+      <p>The edition moves forward only through these steps. Any edit after approval sends it back to review.</p>
+    </div>
+    <figure>
+      <div class="canvas mid">
+        <svg viewBox="0 0 1060 200" role="img" aria-label="Edition states: Collecting, then Drafting, then In review, then Scheduled after the owner confirms, then Sending, ending Sent, Partially sent or Failed. An edit while scheduled returns the edition to In review. A failed draft returns it to Collecting.">
+          <defs>
+            <marker id="sah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0 0 L10 5 L0 10 z"/></marker>
+            <marker id="sahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-gate" d="M0 0 L10 5 L0 10 z"/></marker>
+          </defs>
+          <rect class="st" x="16" y="70" width="128" height="40" rx="20"/><text class="st-text" x="80" y="95" text-anchor="middle">COLLECTING</text>
+          <rect class="st" x="186" y="70" width="128" height="40" rx="20"/><text class="st-text" x="250" y="95" text-anchor="middle">DRAFTING</text>
+          <rect class="st" x="356" y="70" width="128" height="40" rx="20"/><text class="st-text" x="420" y="95" text-anchor="middle">IN_REVIEW</text>
+          <rect class="st-gate" x="526" y="70" width="128" height="40" rx="20"/><text class="st-text" x="590" y="95" text-anchor="middle">SCHEDULED</text>
+          <rect class="st" x="696" y="70" width="128" height="40" rx="20"/><text class="st-text" x="760" y="95" text-anchor="middle">SENDING</text>
+          <rect class="st-good" x="878" y="14" width="164" height="36" rx="18"/><text class="st-text" x="960" y="37" text-anchor="middle">SENT</text>
+          <rect class="st" x="878" y="72" width="164" height="36" rx="18"/><text class="st-text" x="960" y="95" text-anchor="middle">PARTIALLY_SENT</text>
+          <rect class="st" x="878" y="130" width="164" height="36" rx="18"/><text class="st-text" x="960" y="153" text-anchor="middle">FAILED</text>
+
+          <path class="flow" d="M144 90 H182" marker-end="url(#sah)"/>
+          <path class="flow" d="M314 90 H352" marker-end="url(#sah)"/>
+          <path class="flow gate" d="M484 90 H522" marker-end="url(#sahg)"/>
+          <text class="t-arrow" x="503" y="64" text-anchor="middle">confirm</text>
+          <path class="flow" d="M654 90 H692" marker-end="url(#sah)"/>
+          <path class="flow" d="M824 90 H850 V32 H874" marker-end="url(#sah)"/>
+          <path class="flow" d="M850 90 H874" marker-end="url(#sah)"/>
+          <path class="flow" d="M850 90 V148 H874" marker-end="url(#sah)"/>
+
+          <path class="flow back" d="M590 110 V150 H420 V114" marker-end="url(#sahg)"/>
+          <text class="t-arrow" x="505" y="166" text-anchor="middle">any edit revokes approval</text>
+          <path class="flow" d="M250 70 V40 H80 V66" marker-end="url(#sah)"/>
+          <text class="t-arrow" x="165" y="32" text-anchor="middle">draft failed, nothing lost</text>
+        </svg>
+      </div>
+      <figcaption>An edition counts as published, and joins the four-edition memory, as soon as the first reader's copy is accepted, even if the rest of the send later fails.</figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="where-h">
+    <div class="section-head col">
+      <h2 id="where-h">Where it runs</h2>
+      <p>One Next.js app on Vercel. Server functions and the database are both in Mumbai, so each page needs only short hops.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Part</th><th>Runs on</th><th>Holds or sends</th></tr></thead>
+        <tbody>
+          <tr><td>Web app and API</td><td>Vercel, region <code>bom1</code> (Mumbai)</td><td>Public preview at <code>/preview</code>; owner desk at <code>/desk</code> behind a password and a signed cookie</td></tr>
+          <tr><td>Database</td><td>Supabase Postgres, Mumbai</td><td>All workflow state. Row-level security on, API roles revoked, so Supabase's public API can't read it</td></tr>
+          <tr><td>Scheduler</td><td>Vercel Cron → <code>/api/cron/*</code></td><td>Six daily triggers; each run recomputes what's due, so duplicate calls are harmless</td></tr>
+          <tr><td>Secrets</td><td>Vercel environment variables</td><td>API keys, owner password, signing keys. Never in code, Git history or the browser</td></tr>
+          <tr><td>Gemini</td><td>Google, <code>gemini-3.8-flash</code></td><td>Article excerpts in; JSON checked against a schema out</td></tr>
+          <tr><td>Telegram</td><td>Bot <code>@newsman1213bot</code>, webhook</td><td>Draft cards to the owner; button presses back, verified by a secret header</td></tr>
+          <tr><td>Resend</td><td>Resend email API</td><td>One email per reader; delivery, bounce and complaint events back, verified by signature</td></tr>
+          <tr><td>ScrapingBee</td><td>ScrapingBee API</td><td>Article URLs out; page text back</td></tr>
+          <tr><td>Google News</td><td>Public search feeds, no key</td><td>Search queries out; headlines and publisher names back</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="code-h">
+    <div class="section-head col">
+      <h2 id="code-h">Code map</h2>
+      <p>Rules live in one shared layer, so the preview and the live desk enforce the same rules.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Layer</th><th>Path</th><th>Responsibility</th></tr></thead>
+        <tbody>
+          <tr><td>Domain rules</td><td><code>src/lib/domain</code></td><td>Edition commands and approval rules, selection checks, duplicate and same-event detection, history, schedule, email rendering</td></tr>
+          <tr><td>Preview engine</td><td><code>src/lib/client/preview-engine.ts</code></td><td>Runs in the browser on fictional sample data; every outside effect simulated and labelled</td></tr>
+          <tr><td>Services</td><td><code>src/lib/server/services</code></td><td>Ingestion, drafting, editorial, delivery, feedback, Telegram bot, calendar, scheduler</td></tr>
+          <tr><td>Providers</td><td><code>src/lib/server/providers</code></td><td>One adapter per outside service: Gemini, Telegram, Resend, Google, ScrapingBee, feeds</td></tr>
+          <tr><td>Storage</td><td><code>src/lib/server/db</code>, <code>repo</code></td><td>Postgres in production, embedded Postgres locally; numbered migrations</td></tr>
+          <tr><td>HTTP</td><td><code>src/app/api</code>, <code>src/proxy.ts</code></td><td>Owner session, cron secret, Telegram and Resend webhook checks, one-click unsubscribe</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="status-h">
+    <div class="section-head col">
+      <h2 id="status-h">Verified live, 12 October 2026</h2>
+    </div>
+    <div class="status">
+      <div><i class="dot"></i><span><b>Full journey on production.</b> Collected news, Gemini draft, Telegram review, owner confirmation, email delivered through Resend, nine stories saved to editorial memory.</span></div>
+      <div><i class="dot"></i><span><b>Collection.</b> 337 articles from 11 of 12 feeds on production, with 19 full articles via ScrapingBee inside its budget. The 4 Google News queries returned 79 results in a local run; their first production run is the next scheduled collection.</span></div>
+      <div><i class="dot"></i><span><b>Security checks.</b> Forged Telegram and Resend webhooks rejected; database closed to Supabase's public API; no secrets in Git history.</span></div>
+      <div><i class="dot warn"></i><span><b>Email reach.</b> Until a sending domain is verified, Resend delivers only to the account owner's address.</span></div>
+      <div><i class="dot warn"></i><span><b>Timing.</b> Vercel's free plan runs scheduled steps once a day, up to an hour late.</span></div>
+    </div>
+  </section>
+</div>

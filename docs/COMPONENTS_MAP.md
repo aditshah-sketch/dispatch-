@@ -2,11 +2,13 @@
 
 How data flows from sources to subscribers, where AI is used, where human approval is required, and which steps have external effects.
 
+A designed, printable version of this map is in [components-map.html](components-map.html).
+
 ```mermaid
 flowchart LR
   subgraph Sources["Sources (Mon–Wed)"]
     RSS["12 RSS feeds<br/>(verified 2026-10-12)"]
-    GN["GNews search API<br/>(optional)"]
+    GN["Google News search<br/>(4 India queries, no key;<br/>GNews API if a key is set)"]
   end
 
   subgraph Collect["Collect"]
@@ -15,7 +17,7 @@ flowchart LR
     NORM["Normalise URLs · fingerprints<br/>idempotent upsert"]
   end
 
-  DB[("Postgres<br/>articles · editions · revisions<br/>approvals · deliveries · jobs · audit")]
+  DB[("Postgres · Supabase, Mumbai<br/>articles · editions · revisions<br/>approvals · deliveries · jobs · audit<br/>(RLS on, API roles revoked)")]
 
   subgraph Review["Review"]
     AN["Deterministic analysis<br/>domain/analysis.ts<br/>duplicates · window · last-4-editions · event clusters"]
@@ -32,11 +34,11 @@ flowchart LR
   subgraph Deliver["Deliver (Thu)"]
     SCHED["Scheduler + job outbox<br/>/api/cron/* · leases · dedupe keys"]
     SEND["Send job<br/>re-verifies approval · resumable batches<br/>suppression recheck per recipient"]
-    GM["Gmail API<br/>one recipient per message"]
+    GM["Resend (Gmail optional)<br/>one recipient per message<br/>Idempotency-Key per delivery"]
   end
 
   SUBS[("Subscribers")]
-  FB["Bounce processing<br/>(optional gmail.readonly)"]
+  FB["Delivery feedback<br/>Resend signed webhooks<br/>(bounce · complaint · delayed)"]
   UNSUB["Unsubscribe page + RFC 8058 one-click"]
   CAL["Google Calendar<br/>(optional) review blocks · meetings<br/>separate Confirm & book"]
 
@@ -66,7 +68,7 @@ flowchart LR
 
 | Effect | Component | What authorises it | What never authorises it |
 |---|---|---|---|
-| Email to subscribers | `services/delivery.ts` → Gmail API | A valid, unrevoked final approval of the **current revision** whose frozen snapshot hash matches the content; send time reached (or "Send now" chosen explicitly) | Generated drafts, story approvals, reminders, deadlines passing, calendar events, background jobs |
+| Email to subscribers | `services/delivery.ts` → `services/mailer.ts` → Resend (or Gmail) | A valid, unrevoked final approval of the **current revision** whose frozen snapshot hash matches the content; send time reached (or "Send now" chosen explicitly) | Generated drafts, story approvals, reminders, deadlines passing, calendar events, background jobs |
 | Telegram messages to the owner | `services/telegram-bot.ts` | Scheduled draft delivery (Wed 6 PM), the once-per-edition 10 PM reminder, or an owner action | — (only the linked owner chat receives anything) |
 | Calendar event / invitations | `services/calendar.ts` | An explicit "Confirm and book" carrying a hash of exactly the reviewed details | Newsletter approval, story approval, AI suggestions |
 | Article page fetch | `providers/scrapingbee.ts` | Collection run, thin feed text, within the per-run credit budget | Paywalled hosts (recorded as BLOCKED instead) |
@@ -98,7 +100,7 @@ An edition enters editorial memory (the "previous four editions" check) as soon 
 | Pure domain rules (shared by preview + server) | `src/lib/domain/*` | edition commands, validation, clustering, history, schedule, email rendering |
 | Preview engine (browser only) | `src/lib/client/preview-engine.ts` | sample data in localStorage; every effect simulated and labelled |
 | Live client | `src/lib/client/client.ts` | JSON calls to owner-only API |
-| Providers (external APIs) | `src/lib/server/providers/*` | Gemini, Telegram, Google (OAuth/Gmail/Calendar), ScrapingBee, RSS/GNews |
+| Providers (external APIs) | `src/lib/server/providers/*` | Gemini, Telegram, Resend, Google (OAuth/Gmail/Calendar), ScrapingBee, RSS / Google News / GNews |
 | Services (workflow) | `src/lib/server/services/*` | ingestion, drafting, editorial, delivery, feedback, telegram-bot, calendar, scheduler, views |
 | Persistence | `src/lib/server/db/*`, `src/lib/server/repo/*` | Postgres (postgres.js) or PGlite locally; migrations auto-applied |
 | HTTP | `src/app/api/*`, `src/proxy.ts` | owner session, cron secret, Telegram secret header, one-click unsubscribe |
