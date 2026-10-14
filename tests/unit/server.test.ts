@@ -553,3 +553,19 @@ describe("news queries without a GNews key (Google News search)", () => {
     expect(gnTessolve.cluster_id).toBe(feedTessolve.cluster_id); // same event, one slot
   });
 });
+
+describe("scheduled steps after the edition is sent", () => {
+  it("skips draft generation and draft delivery instead of failing or re-sending", async () => {
+    const { runJob } = await import("@/lib/server/services/scheduler");
+    const ed = await seedDraft(db);
+    await db.query(`update editions set status = 'SENT' where id = $1`, [ed.id]);
+    const f = mockFetch([[/./, () => json({ ok: true, result: { message_id: 1 } })]]);
+    for (const kind of ["GENERATE_DRAFT", "DELIVER_DRAFT"] as const) {
+      const { job } = await enqueue(db, { kind, dedupeKey: `${kind}:test` });
+      const r = await runJob(db, job, 10_000);
+      expect(r.detail).toMatch(/Skipped/);
+      expect((await getJob(db, job.id))!.status).toBe("SUCCEEDED");
+    }
+    expect(f.calls).toHaveLength(0); // nothing sent to Telegram or Gemini
+  });
+});

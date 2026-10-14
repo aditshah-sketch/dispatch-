@@ -42,9 +42,22 @@ export async function ensureScheduledJobs(db: Db, now = new Date()): Promise<str
   return created;
 }
 
+// Editions past review (confirmed, sending or sent) need no draft, no draft
+// delivery and no reminder; scheduled steps for them finish as skipped.
+const PAST_REVIEW = ["SCHEDULED", "SENDING", "SENT", "PARTIALLY_SENT", "FAILED", "CANCELLED"];
+
 export async function runJob(db: Db, job: Job, budgetMs: number): Promise<{ detail: string; more: boolean }> {
   const stage = (s: string) => setJobStage(db, job.id, s);
   try {
+    if (job.kind === "GENERATE_DRAFT" || job.kind === "DELIVER_DRAFT") {
+      const settings = await getSettings(db);
+      const ed = await ensureEdition(db, currentPublishDate(new Date(), settings.schedule));
+      if (PAST_REVIEW.includes(ed.status)) {
+        const detail = `Skipped: this week's edition is already ${ed.status.toLowerCase().replace("_", " ")}.`;
+        await finishJob(db, job.id, { skipped: detail });
+        return { detail, more: false };
+      }
+    }
     switch (job.kind) {
       case "COLLECT": {
         const r = await runIngestion(db, { trigger: job.dedupeKey.startsWith("collect:manual") ? "manual" : "schedule", onStage: stage });
